@@ -7,6 +7,8 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+.DS_Store
+mujoco-py/
 .Python
 build/
 develop-eggs/
