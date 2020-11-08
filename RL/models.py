@@ -44,9 +44,10 @@ class actor(nn.Module):
         hidden_dims = [env_params['obs'] + env_params['goal']] + hidden_dims
         self.activation = ACTS[args.activation]
         self.max_action = env_params['action_max']
-        self.layers = []
+        self.layers = nn.ModuleList()
         for i, j in zip(hidden_dims[:-1], hidden_dims[1:]):
             self.layers.append(nn.Linear(i,j))    # append linear layers
+        self.mlp = nn.Sequential()
         self.action_out = nn.Linear(hidden_dims[-1], env_params['action'])
 
     def forward(self, x:torch.Tensor):
@@ -56,7 +57,7 @@ class actor(nn.Module):
         return actions
 
 class critic(nn.Module):
-    def __init__(self, env_params):
+    def __init__(self, args:argparse.Namespace, env_params:Dict):
         """
             Critic Network
             Parameters:
@@ -82,10 +83,10 @@ class critic(nn.Module):
         super(critic, self).__init__()
 
         hidden_dims = args.hidden_dims
-        hidden_dims = [env_params['obs'] + env_params['goal']] + hidden_dims
+        hidden_dims = [env_params['obs'] + env_params['goal'] + env_params['action']] + hidden_dims
         self.activation = ACTS[args.activation]
         self.max_action = env_params['action_max']
-        self.layers = []
+        self.layers = nn.ModuleList()
         for i, j in zip(hidden_dims[:-1], hidden_dims[1:]):
             self.layers.append(nn.Linear(i,j))    # append linear layers
         self.q_out = nn.Linear(hidden_dims[-1], 1)

@@ -1,5 +1,6 @@
 """
     DDPG with HER
+    Code inspired from https://github.com/TianhongDai/hindsight-experience-replay
 """
 import gym
 import argparse
@@ -9,11 +10,14 @@ from torch import optim
 import os
 from datetime import datetime
 import numpy as np
-from typing import Tuple
+from typing import Tuple, List
+from mpi4py import MPI
 
 from RL.models import actor, critic
-from RL.replay_buffer import replay_buffer
+from RL.replay_buffer_mpi import replay_buffer
 from her.her import her_sampler
+from mpi.mpi_utils import sync_grads, sync_networks
+from mpi.normalizer import normalizer
 
 OPTIMIZERS = {
     'adam': optim.Adam,
@@ -57,6 +61,10 @@ class DDPG_Agent:
         # create the network
         self.actor_network = actor(args, self.env_params).to(device)
         self.critic_network = critic(args, self.env_params).to(device)
+
+        # sync the networks across the cpu cores
+        sync_networks(self.actor_network)
+        sync_networks(self.critic_network)
         # build up the target network
         self.actor_target_network = actor(args, self.env_params).to(device)
         self.critic_target_network = critic(args, self.env_params).to(device)
@@ -84,6 +92,10 @@ class DDPG_Agent:
         self.buffer = replay_buffer(self.env_params, \
                                     self.args.buffer_size, \
                                     self.her_module.sample_her_transitions)
+        
+        # make the observation normalizer
+        self.o_norm = normalizer(size=self.env_params['obs'],  default_clip_range=self.args.clip_range)
+        self.g_norm = normalizer(size=self.env_params['goal'], default_clip_range=self.args.clip_range)
     
     def get_env_params(self, env):
         """
@@ -106,46 +118,55 @@ class DDPG_Agent:
         num_cycles = 0
         for epoch in range(self.args.n_epochs):
             for cycle in range(self.args.n_cycles):
+                mpi_obs, mpi_ag, mpi_g, mpi_actions = [], [], [], []
+                for _ in range(self.args.num_rollouts_per_mpi):
+                    ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
+                    # reset the environment
+                    observation = self.env.reset()
+                    obs = observation['observation']
+                    ag = observation['achieved_goal']
+                    g = observation['desired_goal']
 
-                ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
-                # reset the environment
-                observation = self.env.reset()
-                obs = observation['observation']
-                ag = observation['achieved_goal']
-                g = observation['desired_goal']
+                    # collect the sample episode wise
+                    for t in range(self.env_params['max_timesteps']):
+                        # take actions 
+                        # NOTE/TODO: add controller here OR make a wrapper OR add it in self.select_actions()
+                        with torch.no_grad():
+                            state = self.preprocess_inputs(obs, g)
+                            pi = self.actor_network(state)
+                            action = self.select_actions(pi)
+                        # give the action to the environment
+                        observation_new, _, _, info = self.env.step(action)
+                        self.sim_steps += 1                     # increase the simulation timestep by one
+                        obs_new = observation_new['observation']
+                        ag_new = observation_new['achieved_goal']
 
-                for t in range(self.env_params['max_timesteps']):
-                    # take actions 
-                    # NOTE/TODO: add controller here OR make a wrapper OR add it in self.select_actions()
-                    with torch.no_grad():
-                        state = self.preprocess_inputs(obs, g)
-                        pi = self.actor_network(state)
-                        action = self.select_actions(pi)
-                    # give the action to the environment
-                    observation_new, _, _, info = self.env.step(action)
-                    self.sim_steps += 1                     # increase the simulation timestep by one
-                    obs_new = observation_new['observation']
-                    ag_new = observation_new['achieved_goal']
-
-                    # append rollouts
+                        # append rollouts
+                        ep_obs.append(obs.copy())
+                        ep_ag.append(ag.copy())
+                        ep_g.append(g.copy())
+                        ep_actions.append(action.copy())
+                        # re-assign the observation
+                        obs = obs_new
+                        ag = ag_new
+                    # append last states in the array
                     ep_obs.append(obs.copy())
                     ep_ag.append(ag.copy())
-                    ep_g.append(g.copy())
-                    ep_actions.append(action.copy())
-                    # re-assign the observation
-                    obs = obs_new
-                    ag = ag_new
-                # append last states in the array
-                ep_obs.append(obs.copy())
-                ep_ag.append(ag.copy())
+
+                    # append everything to the mpi array
+                    mpi_obs.append(ep_obs)
+                    mpi_ag.append(ep_ag)
+                    mpi_g.append(ep_g)
+                    mpi_actions.append(ep_actions)
                 # convert to np arrays
-                ep_obs = np.expand_dims(np.array(ep_obs),0)
-                ep_ag = np.expand_dims(np.array(ep_ag),0)
-                ep_g = np.expand_dims(np.array(ep_g),0)
-                ep_actions = np.expand_dims(np.array(ep_actions),0)
+                mpi_obs     = np.array(mpi_obs)
+                mpi_ag      = np.array(mpi_ag)
+                mpi_g       = np.array(mpi_g)
+                mpi_actions = np.array(mpi_actions)
 
                 # store them in buffer
-                self.buffer.store_episode([ep_obs, ep_ag, ep_g, ep_actions])
+                self.buffer.store_episode([mpi_obs, mpi_ag, mpi_g, mpi_actions])
+                self.update_normalizer([mpi_obs, mpi_ag, mpi_g, mpi_actions])
 
                 actor_loss_cycle = 0; critic_loss_cycle = 0 
                 for batch in range(self.args.n_batches):
@@ -163,10 +184,9 @@ class DDPG_Agent:
             # evaluate the agent
             success_rate = self.eval_agent()
             print(f'Epoch:{epoch}\tSuccess Rate:{success_rate:.3f}')
-            # TODO @nsidn98 save weights and log success rates
             if self.writer:
                 self.writer.add_scalar('Success Rate/Success Rate', success_rate, self.sim_steps)
-            
+            # save checkpoints
             self.save_checkpoint(self.save_dir)
 
     def preprocess_inputs(self, obs:np.ndarray, g:np.ndarray) -> torch.Tensor:
@@ -175,7 +195,9 @@ class DDPG_Agent:
             and convert them to torch tensors
             and then transfer them to either CPU of GPU
         """
-        # concatenate the stuffs
+        obs = self.o_norm.normalize(obs)
+        g = self.g_norm.normalize(g)
+        # concatenate the obs and goal
         inputs = np.concatenate([obs, g])
         inputs = torch.tensor(inputs, dtype=torch.float32).unsqueeze(0)
         inputs = inputs.to(self.device)
@@ -213,9 +235,38 @@ class DDPG_Agent:
         """
             Polyak averaging of target and main networks; Also known as soft update of networks
             target_net_params = (1 - polyak) * main_net_params + polyak * target_net_params
+            target and source are torch networks
         """
         for target_param, param in zip(target.parameters(), source.parameters()):
             target_param.data.copy_((1 - self.args.polyak) * param.data + self.args.polyak * target_param.data)
+    
+    def update_normalizer(self, episode_batch:List):
+        """
+            Update the normalizer for both obs and goal
+        """
+        mb_obs, mb_ag, mb_g, mb_actions = episode_batch
+        mb_obs_next = mb_obs[:, 1:, :]
+        mb_ag_next = mb_ag[:, 1:, :]
+        # get the number of normalization transitions
+        num_transitions = mb_actions.shape[1]
+        # create the new buffer to store them
+        buffer_temp = {'obs': mb_obs, 
+                       'ag': mb_ag,
+                       'g': mb_g, 
+                       'actions': mb_actions, 
+                       'obs_next': mb_obs_next,
+                       'ag_next': mb_ag_next,
+                       }
+        transitions = self.her_module.sample_her_transitions(buffer_temp, num_transitions)
+        obs, g = transitions['obs'], transitions['g']
+        # pre process the obs and g
+        transitions['obs'], transitions['g'] = self.preprocess_og(obs, g)
+        # update
+        self.o_norm.update(transitions['obs'])
+        self.g_norm.update(transitions['g'])
+        # recompute the stats
+        self.o_norm.recompute_stats()
+        self.g_norm.recompute_stats()
 
     def update_network(self, step:int) -> Tuple[float, float]:
         """
@@ -230,9 +281,14 @@ class DDPG_Agent:
         transitions['obs'], transitions['g'] = self.preprocess_og(o, g)
         transitions['obs_next'], transitions['g_next'] = self.preprocess_og(o_next, g)
 
+        obs_norm = self.o_norm.normalize(transitions['obs'])
+        g_norm   = self.g_norm.normalize(transitions['g'])
+        obs_next_norm = self.o_norm.normalize(transitions['obs_next'])
+        g_next_norm   = self.g_norm.normalize(transitions['g_next'])
+
         # concatenate obs and goal
-        states = np.concatenate([transitions['obs'], transitions['g']], axis=1)
-        next_states = np.concatenate([transitions['obs_next'], transitions['g_next']], axis=1)
+        states = np.concatenate([obs_norm, g_norm], axis=1)
+        next_states = np.concatenate([obs_next_norm, g_next_norm], axis=1)
 
         # convert to tensor
         states = torch.tensor(states, dtype=torch.float32).to(self.device)
@@ -267,10 +323,12 @@ class DDPG_Agent:
         # backpropagate
         self.actor_optim.zero_grad()    # zero the gradients
         actor_loss.backward()           # backward prop
+        sync_grads(self.actor_network)
         self.actor_optim.step()         # take step towards gradient direction
 
         self.critic_optim.zero_grad()    # zero the gradients
         critic_loss.backward()           # backward prop
+        sync_grads(self.critic_network)
         self.critic_optim.step()         # take step towards gradient directions
 
         return actor_loss.item(), critic_loss.item()
@@ -281,24 +339,27 @@ class DDPG_Agent:
             performs n_test_rollouts in the environment
             and returns
         """
-        successes = []
+        total_success_rate = []
         for _ in range(self.args.n_test_rollouts):
-            success = np.zeros(self.env_params['max_timesteps'])
+            per_success_rate = []
             observation = self.env.reset()
             obs = observation['observation']
             g = observation['desired_goal']
-            for i in range(self.env_params['max_timesteps']):
+            for _ in range(self.env_params['max_timesteps']):
                 with torch.no_grad():
-                    input_tensor = self.preprocess_inputs(obs,g)
+                    input_tensor = self.preprocess_inputs(obs, g)
                     pi = self.actor_network(input_tensor)
+                    # convert the actions
                     actions = pi.detach().cpu().numpy().squeeze()
                 observation_new, _, _, info = self.env.step(actions)
                 obs = observation_new['observation']
                 g = observation_new['desired_goal']
-                success[i] = info['is_success']
-            successes.append(success)
-        successes = np.array(successes)
-        return np.mean(successes[:,-1]) # return mean of only final steps success
+                per_success_rate.append(info['is_success'])
+            total_success_rate.append(per_success_rate)
+        total_success_rate = np.array(total_success_rate)
+        local_success_rate = np.mean(total_success_rate[:, -1])
+        global_success_rate = MPI.COMM_WORLD.allreduce(local_success_rate, op=MPI.SUM)
+        return global_success_rate / MPI.COMM_WORLD.Get_size()
 
     def save_checkpoint(self, path:str):
         """
@@ -315,6 +376,8 @@ class DDPG_Agent:
         checkpoint = {}
         checkpoint['args'] = vars(self.args)
         checkpoint['actor_state_dict'] = self.actor_network.state_dict()
+        # save the normalizer mean and std
+        checkpoint['normalizer_feats'] = [self.o_norm.mean, self.o_norm.std, self.g_norm.mean, self.g_norm.std]
         checkpoint['env_name'] = self.args.env_name
         torch.save(checkpoint, path)
 
@@ -345,7 +408,7 @@ if __name__ == "__main__":
     print('Device:',device)
     print('#'*50)
     args.device = device
-    args.mpi = False        # not running on mpi mode
+    args.mpi = True         # running on mpi mode
     #####################################
 
     env = gym.make(args.env_name)   # initialise the environment

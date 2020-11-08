@@ -47,7 +47,7 @@ def pick_place_controller(obs:Dict, object_in_hand:bool):
     """
     dist_threshold = 0.002
     height_threshold = 0.003
-    kp = 2
+    kp = 10
     action_pos =  list(kp * obs['observation'][6:9])  # vector joining gripper and object 
 
     if not object_in_hand:
@@ -92,7 +92,7 @@ def imperfect_slide_controller(obs:Dict, hand_higher:bool, hand_above:bool, hand
         All these bools are suppposed to be used sequentially. 
         That is, once something becomes True, we do not care about it
     """
-    kp = 1
+    kp = 10
     hit = 5
 
     # move the hand a little higher than the puck
@@ -140,27 +140,29 @@ def imperfect_slide_controller(obs:Dict, hand_higher:bool, hand_above:bool, hand
 # time.sleep(5)
 
 if __name__ == "__main__":
-    env_name = 'FetchPickAndPlace-v1'
+    # env_name = 'FetchPickAndPlace-v1'
     env_name = 'FetchSlide-v1'
     env = gym.make(env_name)
     # env = gym.wrappers.Monitor(env,'video/'+env_name, force=True) # can be used to record videos but this does not work properly
-    obs = env.reset()
 
-    hand_above = False
-    hand_behind = False
-    hand_higher = False
-    hand_down = False
-    object_in_hand = False
-    action = [0,0,0,0]   # give zero action at first time step
-    # time.sleep(5)
-    for i in tqdm(range(1000)):
-        obs, rew, done, info = env.step(action)
-        if env_name == 'FetchPickAndPlace-v1':
-            action, object_in_hand = pick_place_controller(obs, object_in_hand)
-        elif env_name == 'FetchSlide-v1':
-            action, hand_higher, hand_above, hand_behind, hand_down = imperfect_slide_controller(obs, hand_higher, hand_above, hand_behind, hand_down)
-        env.sim.render(mode='window')
-        # if info['is_success']:
-        #     break
+    successes = []
+    for ep in tqdm(range(50)):
+        success = np.zeros(env._max_episode_steps)
+        obs = env.reset()
+        hand_above = False
+        hand_behind = False
+        hand_higher = False
+        hand_down = False
+        object_in_hand = False
+        action = [0,0,0,0]  # give zero action at first time step
+        for i in (range(env._max_episode_steps)):
+            obs, rew, done, info = env.step(action)
+            success[i] = info['is_success']
+            if env_name == 'FetchPickAndPlace-v1':
+                action, object_in_hand = pick_place_controller(obs, object_in_hand)
+            elif env_name == 'FetchSlide-v1':
+                action, hand_higher, hand_above, hand_behind, hand_down = imperfect_slide_controller(obs, hand_higher, hand_above, hand_behind, hand_down)
+        successes.append(success)
+    successes = np.array(successes)
 
     print('Done')

@@ -1,9 +1,10 @@
 import argparse
+from distutils.util import strtobool
 
 parser = argparse.ArgumentParser(description='DDPG agent')
-parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
-                    help='the name of this experiment')
-parser.add_argument('--gym-id', type=str, default="FetchPickAndPlace-v1",
+parser.add_argument('--exp_name', type=str, default='res', choices=['res', 'rl'],
+                    help='Type of experiment: either learn with rl from scratch or learn residues')
+parser.add_argument('--env_name', type=str, default="FetchReach-v1",
                     help='the id of the gym environment')
 
 # algorithm parameters(the ones given in the list in the paper in Appendix)
@@ -17,13 +18,13 @@ parser.add_argument('--critic_optim', type=str, default='adam', choices=['adam',
                     help='Optimizer for critic network')
 parser.add_argument('--polyak', type=float, default=0.95,
                     help='Polyak averaging coefficient')
-parser.add_argument('hidden_dims', type=list, default=[256,256,256],
+parser.add_argument('--hidden_dims', type=list, default=[256,256,256],
                     help='Hidden layer dimensions')
 parser.add_argument('--activation', type=str, default='relu', choices=['relu', 'tanh', 'sigmoid'],
                     help='Activation function for networks')
-parser.add_argument('--batch_size', type=int, default=32,
+parser.add_argument('--batch_size', type=int, default=256,
                     help='Batch Size for training')
-parser.add_argument('--random_prob', type=float, default=0.3,
+parser.add_argument('--random_eps', type=float, default=0.3,
                     help='Probability of taking random actions')
 parser.add_argument('--buffer_size', type=int, default=int(1e6),
                     help='the replay memory buffer size')
@@ -43,12 +44,14 @@ parser.add_argument('--clip_obs', type=float, default=200,
                     help='Observation clipping')
 parser.add_argument('--action_l2', type=float, default=1.0,
                     help='Action L2 norm coefficient to be added in actor loss')
+parser.add_argument('--weight_decay', type=float, default=0.0,
+                    help='Weight decay for optimizers (actor and critic)')
 
 
 # seed related stuff
 parser.add_argument('--seed', type=int, default=0,
                     help='seed of the experiment')
-parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True,
                     help='if toggled, `torch.backends.cudnn.deterministic=False`')
 
 # loss function related
@@ -78,4 +81,8 @@ parser.add_argument('--gamma', type=float, default=0.99,
                     help='the discount factor gamma')
 parser.add_argument('--max-grad-norm', type=float, default=0.5,
                     help='the maximum norm for the gradient clipping')
+parser.add_argument('--clip_range', type=float, default=5,
+                    help='Clip range for MPI normalizer')
+parser.add_argument('--num_rollouts_per_mpi', type=int, default=2, 
+                    help='the rollouts per mpi')
 args = parser.parse_args()
