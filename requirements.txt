@@ -1,0 +1,17 @@
+cffi==1.14.0
+mpi4py==3.0.3
+imageio==2.8.0
+tqdm==4.44.1
+torch==1.6.0
+gym==0.17.3
+numpy==1.18.1
+glfw==2.0.0
+Cython==0.29.15
+pycparser==2.20
+fasteners==0.15
+imagehash==4.1.0
+ipdb==0.13.4
+openvr==1.14.1501
+Pillow==8.0.1
+PyOpenGL==3.1.5
+pytest==6.1.2
