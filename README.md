@@ -30,3 +30,8 @@ All the experiments will be logged with a library called "[Wandb](https://www.wa
 ### MPI version:
 `mpirun -np 1 python -u RL/ddpg_mpi.py --env_name='FetchReach-v1' --n_cycles=10`
 
+## Modifications we could try:
+* Sensor noise: add some noise/bias to the observations
+* Imperfect control: have an imperfect controller
+* Make modifications in the environment. Like friction, obstacles etc.
+
