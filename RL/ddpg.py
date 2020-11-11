@@ -337,6 +337,7 @@ if __name__ == "__main__":
     from torch.utils.tensorboard import SummaryWriter
 
     from config import args
+    from utils import connected_to_internet
 
     # check whether GPU is available or not
     use_cuda = torch.cuda.is_available()
@@ -361,11 +362,22 @@ if __name__ == "__main__":
     #####################################
 
     # book keeping to log stuff
-    dryrun = False
-    if dryrun:
+    if args.dryrun:
         writer = None
         weight_save_path = 'model_dryrun.ckpt'
     else:
+        # check internet connection
+        # for offline wandb. Will load everything on cloud afterwards
+        if not connected_to_internet():
+            import json
+            # save a json file with your wandb api key in your home folder as {'my_wandb_api_key': 'INSERT API HERE'}
+            # NOTE this is only for running on MIT Supercloud
+            with open(os.path.expanduser('~')+'/keys.json') as json_file: 
+                key = json.load(json_file)
+                my_wandb_api_key = key['nsidn98_wandb_api_key'] # NOTE change here as well
+            os.environ["WANDB_API_KEY"] = my_wandb_api_key # my Wandb api key
+            os.environ["WANDB_MODE"] = "dryrun"
+
         start_time = time.strftime("%H_%M_%S-%d_%m_%Y", time.localtime())
         experiment_name = f"{args.exp_name}_{start_time}"
 

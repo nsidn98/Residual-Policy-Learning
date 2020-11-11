@@ -85,4 +85,8 @@ parser.add_argument('--clip_range', type=float, default=5,
                     help='Clip range for MPI normalizer')
 parser.add_argument('--num_rollouts_per_mpi', type=int, default=2, 
                     help='the rollouts per mpi')
+
+parser.add_argument('--dryrun', type=bool, default=False,
+                    help='Whether to use wandb writer or not')
+                    
 args = parser.parse_args()
