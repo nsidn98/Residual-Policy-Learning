@@ -402,6 +402,11 @@ if __name__ == "__main__":
     from config import args
     from utils import connected_to_internet
 
+    # set parameters for threading
+    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['MKL_NUM_THREADS'] = '1'
+    os.environ['IN_MPI'] = '1'
+
     # check whether GPU is available or not
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")

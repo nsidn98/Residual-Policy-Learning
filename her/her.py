@@ -1,7 +1,8 @@
 import numpy as np
+from typing import Dict
 
 class her_sampler:
-    def __init__(self, replay_strategy, replay_k, reward_func=None):
+    def __init__(self, replay_strategy:str, replay_k:int, reward_func=None):
         """
             Parameters:
             -----------
@@ -20,7 +21,7 @@ class her_sampler:
             self.future_p = 0
         self.reward_func = reward_func
 
-    def sample_her_transitions(self, episode_batch, batch_size):
+    def sample_her_transitions(self, episode_batch:Dict, batch_size:int):
         """
             Sample HER transitions
             Parameters:
