@@ -183,11 +183,13 @@ class DDPG_Agent:
                 num_cycles += 1
             # evaluate the agent
             success_rate = self.eval_agent()
-            print(f'Epoch:{epoch}\tSuccess Rate:{success_rate:.3f}')
-            if self.writer:
-                self.writer.add_scalar('Success Rate/Success Rate', success_rate, self.sim_steps)
-            # save checkpoints
-            self.save_checkpoint(self.save_dir)
+            # print only once instead of the huge monstrosity!!!
+            if MPI.COMM_WORLD.Get_rank() == 0:
+                print(f'Epoch:{epoch}\tSuccess Rate:{success_rate:.3f}')
+                if self.writer:
+                    self.writer.add_scalar('Success Rate/Success Rate', success_rate, self.sim_steps)
+                # save checkpoints
+                self.save_checkpoint(self.save_dir)
 
     def preprocess_inputs(self, obs:np.ndarray, g:np.ndarray) -> torch.Tensor:
         """
@@ -410,9 +412,10 @@ if __name__ == "__main__":
     # check whether GPU is available or not
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
-    print('#'*50)
-    print('Device:',device)
-    print('#'*50)
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        print('#'*50)
+        print('Device:',device)
+        print('#'*50)
     args.device = device
     args.mpi = True         # running on mpi mode
     #####################################
@@ -449,9 +452,17 @@ if __name__ == "__main__":
         start_time = time.strftime("%H_%M_%S-%d_%m_%Y", time.localtime())
         experiment_name = f"{args.exp_name}_{start_time}"
 
-        wandb.init(project='Residual Policy Learning', entity='6-881_project', sync_tensorboard=True, config=vars(args), name=experiment_name, save_code=True)
-        writer = SummaryWriter(f"/tmp/{experiment_name}")
-        weight_save_path = os.path.join(wandb.run.dir, "model.ckpt")
+        # create only one wandb logger instead of 8/16!!!
+        if MPI.COMM_WORLD.Get_rank() == 0:
+            print('#'*50)
+            print('Creating wandboard...')
+            print('#'*50)
+            wandb.init(project='Residual Policy Learning', entity='6-881_project', sync_tensorboard=True, config=vars(args), name=experiment_name, save_code=True)
+            writer = SummaryWriter(f"/tmp/{experiment_name}")
+            weight_save_path = os.path.join(wandb.run.dir, "model.ckpt")
+        else:
+            writer = None
+            weight_save_path = "model_mpi.ckpt"
     ##########################################################################
 
     # initialise the agent
