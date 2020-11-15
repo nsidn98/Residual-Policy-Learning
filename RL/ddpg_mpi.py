@@ -108,13 +108,20 @@ class DDPG_Agent:
                 'action': env.action_space.shape[0],
                 'action_max': env.action_space.high[0],
                 }
-        params['max_timesteps'] = env._max_episode_steps
+        try:
+            params['max_timesteps'] = env._max_episode_steps
+        # for custom envs
+        except:
+            params['max_timesteps'] = env.max_episode_steps
         return params
         
     def train(self):
         """
             Run the episodes for training
         """
+        print('#'*50)
+        print('Beginning the training...')
+        print('#'*50)
         num_cycles = 0
         for epoch in range(self.args.n_epochs):
             for cycle in range(self.args.n_cycles):

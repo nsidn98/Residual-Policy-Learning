@@ -41,7 +41,8 @@ class FetchSlide(gym.Env):
     """
     def __init__(self, *args, **kwargs):
         self.fetch_env = gym.make('FetchSlide-v1')
-        self._max_episode_steps = self.fetch_env._max_episode_steps
+        self.metadata = self.fetch_env.metadata
+        self.max_episode_steps = self.fetch_env._max_episode_steps
         self.action_space = self.fetch_env.action_space
         self.observation_space = self.fetch_env.observation_space
     
@@ -58,7 +59,7 @@ class FetchSlide(gym.Env):
         return self.fetch_env.seed(seed=seed)
 
     def render(self, mode="human", *args, **kwargs):
-        return self.fetch_env.render(*args, **kwargs)
+        return self.fetch_env.render(mode, *args, **kwargs)
     
     def close(self):
         return self.fetch_env.close()
@@ -82,7 +83,8 @@ class FetchSlideImperfectControl(gym.Env):
     """
     def __init__(self, kp:float=10, hit:float=5, *args, **kwargs):
         self.fetch_env = gym.make('FetchSlide-v1')
-        self._max_episode_steps = self.fetch_env._max_episode_steps
+        self.metadata = self.fetch_env.metadata
+        self.max_episode_steps = self.fetch_env._max_episode_steps
         self.action_space = self.fetch_env.action_space
         self.observation_space = self.fetch_env.observation_space
         ############################
@@ -119,7 +121,7 @@ class FetchSlideImperfectControl(gym.Env):
         return self.fetch_env.seed(seed=seed)
 
     def render(self, mode:str="human", *args, **kwargs):
-        return self.fetch_env.render(*args, **kwargs)
+        return self.fetch_env.render(mode, *args, **kwargs)
     
     def close(self):
         return self.fetch_env.close()
@@ -247,14 +249,14 @@ class FetchSlideFrictionControl(gym.Env):
     """
     def __init__(self, *args, **kwargs):
         self.fetch_env = gym.make('FetchSlide-v1')
-
+        self.metadata = self.fetch_env.metadata
         # change friction between all possible contacts
         # NOTE can only change to the last two indices to only change object and table friction
         for i in range(len(self.fetch_env.env.sim.model.geom_friction)):
             self.fetch_env.env.sim.model.geom_friction[i] = [18e-2, 5.e-3, 1e-4]
         ###############################################
 
-        self._max_episode_steps = self.fetch_env._max_episode_steps
+        self.max_episode_steps = self.fetch_env._max_episode_steps
         self.action_space = self.fetch_env.action_space
         self.observation_space = self.fetch_env.observation_space
     
@@ -277,7 +279,7 @@ class FetchSlideFrictionControl(gym.Env):
         return self.fetch_env.seed(seed=seed)
 
     def render(self, mode:str="human", *args, **kwargs):
-        return self.fetch_env.render(*args, **kwargs)
+        return self.fetch_env.render(mode, *args, **kwargs)
     
     def close(self):
         return self.fetch_env.close()
@@ -299,20 +301,23 @@ class FetchSlideFrictionControl(gym.Env):
 
 if __name__ == "__main__":
     # env = FetchSlide()
+    # env_name = 'FetchSlide'
     env = FetchSlideImperfectControl()
+    env_name = 'FetchSlideImperfectControl'
+    env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True)
     successes = []
     # set the seeds
     env.seed(1)
     env.action_space.seed(1)
     env.observation_space.seed(1)
-    for ep in range(2):
-        success = np.zeros(env._max_episode_steps)
+    for ep in range(1):
+        success = np.zeros(env.max_episode_steps)
         obs = env.reset()
         action = [0,0,0,0]  # give zero action at first time step
-        for i in (range(env._max_episode_steps)):
+        for i in (range(env.max_episode_steps)):
+            env.render(mode='rgb_array')
             obs, rew, done, info = env.step(action)
             success[i] = info['is_success']
-            env.render()
         successes.append(success)
     successes = np.array(successes)
     env.close()
