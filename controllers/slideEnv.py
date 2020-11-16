@@ -13,7 +13,7 @@
             pi_theta(s) = pi(s) + f_theta(s)
     FetchSlideFrictionControl:
         'FetchSlide-v1' with a fairly good controller
-        This controller can slide the puck perfectly to the goal 
+        This controller can slide the puck perfectly to the goal
         for the original frictional coefficient
         But now the friction coefficients are changed and hence it cannot
         Action taken as:
@@ -45,7 +45,7 @@ class FetchSlide(gym.Env):
         self.max_episode_steps = self.fetch_env._max_episode_steps
         self.action_space = self.fetch_env.action_space
         self.observation_space = self.fetch_env.observation_space
-    
+
     def step(self, action):
         observation, reward, done, info = self.fetch_env.step(action)
         return observation, reward, done, info
@@ -60,13 +60,13 @@ class FetchSlide(gym.Env):
 
     def render(self, mode="human", *args, **kwargs):
         return self.fetch_env.render(mode, *args, **kwargs)
-    
+
     def close(self):
         return self.fetch_env.close()
-    
+
     def compute_reward(self, *args, **kwargs):
         return self.fetch_env.compute_reward(*args, **kwargs)
-    
+
 class FetchSlideImperfectControl(gym.Env):
     """
         FetchSlideImperfectControl:
@@ -95,7 +95,7 @@ class FetchSlideImperfectControl(gym.Env):
         self.hand_down = False
         self.hand_behind = False
         ############################
-    
+
     def step(self, residual_action:np.ndarray):
         controller_action = self.controller_action(self.last_observation)
         action = np.add(controller_action, residual_action)
@@ -122,7 +122,7 @@ class FetchSlideImperfectControl(gym.Env):
 
     def render(self, mode:str="human", *args, **kwargs):
         return self.fetch_env.render(mode, *args, **kwargs)
-    
+
     def close(self):
         return self.fetch_env.close()
 
@@ -175,14 +175,14 @@ class FetchSlideImperfectControl(gym.Env):
         if self.hand_down:
             action_pos = list(self.hit * (goal_pos[:2]-grip_pos[:2]) )
             action = action_pos + [0,0]
-
+        # print(self.fetch_env.env.sim.data.time)
         return action
 
 class FetchSlideFrictionControl(gym.Env):
     """
         FetchSlideFrictionControl:
             'FetchSlide-v1' with a fairly good controller
-            This controller can slide the puck perfectly to the goal 
+            This controller can slide the puck perfectly to the goal
             for the original frictional coefficient
             But now the friction coefficients are changed and hence it cannot
             Action taken as:
@@ -190,30 +190,30 @@ class FetchSlideFrictionControl(gym.Env):
 
         Friction Information for MuJoCo:
             http://mujoco.org/book/modeling.html
-            Recall that contacts can have up to 5 friction coefficients: 
-            two tangential, one torsional, two rolling. 
-            Each contact in mjData.contact actually has all 5 of them, 
-            even if condim is less than 6 and not all coefficients are used. 
-            In contrast, geoms have only 3 friction coefficients: 
-            tangential (same for both axes), torsional, rolling (same for both axes). 
-            Each of these 3D vectors of friction coefficients is expanded into a 5D vector 
-            of friction coefficients by replicating the tangetial and rolling components. 
-            The contact friction coefficients are then computed according to the following rule: 
-            if one of the two geoms has higher priority, its friction coefficients are used. 
-            Otherwise the element-wise maximum of each friction coefficient over the two geoms is used. 
+            Recall that contacts can have up to 5 friction coefficients:
+            two tangential, one torsional, two rolling.
+            Each contact in mjData.contact actually has all 5 of them,
+            even if condim is less than 6 and not all coefficients are used.
+            In contrast, geoms have only 3 friction coefficients:
+            tangential (same for both axes), torsional, rolling (same for both axes).
+            Each of these 3D vectors of friction coefficients is expanded into a 5D vector
+            of friction coefficients by replicating the tangetial and rolling components.
+            The contact friction coefficients are then computed according to the following rule:
+            if one of the two geoms has higher priority, its friction coefficients are used.
+            Otherwise the element-wise maximum of each friction coefficient over the two geoms is used.
             The rationale is similar to taking the maximum over condim: we want the more frictional geom to win.
 
-            The reason for having 5 coefficients per contact and only 3 per geom is as follows. 
-            For a contact pair, we want to allow the most flexible model our solver can handle. 
-            As mentioned earlier, anisotropic friction can be exploited to model effects such as skating. 
-            This however requires knowing how the two axes of the contact tangent plane are oriented. 
-            For a predefined contact pair we know the two geom types in advance, and the corresponding 
-            collision function always generates contact frames oriented in the same way - 
-            which we do not describe here but it can be seen in the visualizer. 
-            For individual geoms however, we do not know which other geoms they might collide with 
-            and what their geom types might be, so there is no way to know how the contact 
-            tangent plane will be oriented when specifying an individual geom. 
-            This is why MuJoCo does now allow anisotropic friction in the individual geom specifications, 
+            The reason for having 5 coefficients per contact and only 3 per geom is as follows.
+            For a contact pair, we want to allow the most flexible model our solver can handle.
+            As mentioned earlier, anisotropic friction can be exploited to model effects such as skating.
+            This however requires knowing how the two axes of the contact tangent plane are oriented.
+            For a predefined contact pair we know the two geom types in advance, and the corresponding
+            collision function always generates contact frames oriented in the same way -
+            which we do not describe here but it can be seen in the visualizer.
+            For individual geoms however, we do not know which other geoms they might collide with
+            and what their geom types might be, so there is no way to know how the contact
+            tangent plane will be oriented when specifying an individual geom.
+            This is why MuJoCo does now allow anisotropic friction in the individual geom specifications,
             but only in the explicit contact pair specifications.
 
         Friction for FetchEnv:
@@ -247,7 +247,7 @@ class FetchSlideFrictionControl(gym.Env):
                             [1.e-01, 5.e-03, 1.e-04],   <-  'table0'
                             [1.e-01, 5.e-03, 1.e-04]])  <-  'object0'
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, kp:float=7, *args, **kwargs):
         self.fetch_env = gym.make('FetchSlide-v1')
         self.metadata = self.fetch_env.metadata
         # change friction between all possible contacts
@@ -259,10 +259,21 @@ class FetchSlideFrictionControl(gym.Env):
         self.max_episode_steps = self.fetch_env._max_episode_steps
         self.action_space = self.fetch_env.action_space
         self.observation_space = self.fetch_env.observation_space
-    
+        self.kp = kp
+        self.hand_above = False
+        self.hand_higher = False
+        self.hand_down = False
+        self.hand_behind = False
+        self.mu = self.fetch_env.env.sim.model.geom_friction[0][0]
+        self.r = self.fetch_env.env.sim.model.geom_size[-1][0]
+        self.dt = self.fetch_env.env.sim.model.opt.timestep
+        self.d1 = 0.05
+        self.d2 = -1
+        self.f = -1
+        ############################
+
     def step(self, residual_action:np.ndarray):
         controller_action = self.controller_action(self.last_observation)
-        # action = controller_action + residual_action
         action = np.add(controller_action, residual_action)
         action = np.clip(action, -1, 1)
         observation, reward, done, info = self.fetch_env.step(action)
@@ -272,6 +283,13 @@ class FetchSlideFrictionControl(gym.Env):
     def reset(self):
         observation = self.fetch_env.reset()
         self.last_observation = observation.copy()
+        ############################
+        # parameters for the imperfect controller
+        self.hand_above = False
+        self.hand_higher = False
+        self.hand_down = False
+        self.hand_behind = False
+        ############################
         return observation
 
     def seed(self, seed:int=0):
@@ -280,7 +298,7 @@ class FetchSlideFrictionControl(gym.Env):
 
     def render(self, mode:str="human", *args, **kwargs):
         return self.fetch_env.render(mode, *args, **kwargs)
-    
+
     def close(self):
         return self.fetch_env.close()
 
@@ -290,20 +308,59 @@ class FetchSlideFrictionControl(gym.Env):
     def controller_action(self, obs:Dict, DEBUG:bool=False):
         """
             Given an observation return actions according
-            to a perfect controller
+            to an imperfect controller
             [grip_pos, object_pos, object_rel_pos, gripper_state, object_rot,
                      object_velp, object_velr, grip_velp, gripper_vel]
         """
-        # TODO @rhjiang please add a (almost)perfect controller here; NOT like the one made by @nsidn98 :P
-        action = [0,0,0,0]
+        grip_pos = obs['observation'][:3]
+        object_pos = obs['observation'][3:6]
+        object_rel_pos = obs['observation'][6:9]
+        goal_pos = obs['desired_goal']
+        # lift the hand little from the table vertically
+        if not self.hand_higher:
+            action = [0,0,1,0]
+            if grip_pos[2]-object_pos[2] > 0.05:
+                self.hand_higher = True
+                if DEBUG:
+                    print('Hand lifted from the table')
+        # once above, move it above the puck
+        if self.hand_higher and not self.hand_behind:
+            goal_grip_pos = object_pos + (0.025 + self.r)*(object_pos - goal_pos)/np.linalg.norm(object_pos - goal_pos)
+            # goal_object_vec = object_pos - goal_pos # vector pointing towards object from goal
+            # action_pos = list(self.kp * goal_object_vec)
+            action_pos = list(self.kp*(goal_grip_pos - grip_pos))
+            action = action_pos[:2] + [0,0]
+            if np.linalg.norm(grip_pos[:2]-goal_grip_pos[:2]) < 0.001:
+                self.hand_behind = True
+                if DEBUG:
+                    print('Hand has moved behind')
+        # now move the hand down
+        if self.hand_behind and not self.hand_down:
+            action = [0,0,-1,0]
+            if grip_pos[2]-object_pos[2] <0.01:
+                self.d2 = (np.linalg.norm(goal_pos - grip_pos) - self.d1)
+                self.f = self.d2*self.mu*9.81/self.d1
+                self.hand_down = True
+                if DEBUG:
+                    print('Ready to HIT')
+        # now give impulse
+        if self.hand_down:
+            if np.linalg.norm(goal_pos - grip_pos)>self.d1:
+                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos)*self.f*self.fetch_env.env.sim.data.time*self.dt)
+            else:
+                action_pos = [0,0]
+            action = action_pos[:2] + [0,0]
+        # print(self.fetch_env.env.sim.data.time)
         return action
 
 
 if __name__ == "__main__":
     # env = FetchSlide()
     # env_name = 'FetchSlide'
-    env = FetchSlideImperfectControl()
-    env_name = 'FetchSlideImperfectControl'
+    env = FetchSlideFrictionControl()
+    env_name = 'FetchSlideFrictionControl'
+    # env = FetchSlideImperfectControl()
+    # env_name = 'FetchSlideImperfectControl'
     env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True)
     successes = []
     # set the seeds
