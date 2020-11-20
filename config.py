@@ -38,6 +38,14 @@ parser.add_argument('--n_batches', type=int, default=40,
                     help='Number of batches per cycle')
 parser.add_argument('--num_rollouts_per_mpi', type=int, default=2, 
                     help='the rollouts per mpi')
+parser.add_argument('--beta', type=float, default=1.0,
+                    help='Burn-in parameter for training residues')
+# check https://github.com/k-r-allen/residual-policy-learning/issues/14#issue-747756960
+# turns out that the original authors flipped the actor and critic loss monitoring values
+# so instead of critic-loss being less than beta it is actor-loss less than beta
+# so the original author(@tomsilver) has suggested us to try out both
+parser.add_argument('--beta_monitor', type=str, default='critic', choices=['actor', 'critic'],
+                    help='Which loss to check for burn-in parameter tuning')
 
 # random noise
 parser.add_argument('--noise_eps', type=float, default=0.2,

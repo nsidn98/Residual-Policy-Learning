@@ -80,6 +80,7 @@ class DDPG_Agent:
         self.critic_optim = OPTIMIZERS[args.critic_optim](self.critic_network.parameters(),
                                                          lr=self.args.critic_lr,\
                                                          weight_decay=self.args.weight_decay)
+        self.burn_in_done = False   # to check if burn-in is done or not
 
         # loss function for DDPG
         self.criterion = LOSS_FN[args.loss_fn]
@@ -115,15 +116,67 @@ class DDPG_Agent:
             params['max_timesteps'] = env.max_episode_steps
         return params
         
+    def set_actor_lr(self, loss:float, prev_loss:float ,verbose:bool=True):
+        """
+            Set the learning rate of the actor network
+            to either the original learning rate
+            or zero depending on the burn-in parameter
+            diff_loss = |loss - prev_loss|
+            if rl:
+                actor_lr = original_actor_lr
+            if residual learning and diff_loss < beta:
+                actor_lr = original_actor_lr
+            elif residual learning and diff_loss > beta:
+                actor_lr = 0
+            Parameters:
+            -----------
+            loss: float
+                Mean of the losses till the current epoch
+            prev_loss: float
+                Mean of losses till the last epoch
+            verbose: bool
+                To print the change in learning rate
+        """
+        lr = self.args.actor_lr
+        # loss is zero only in the first epoch hence do not change lr then
+        # and that's why give a large value to diff_loss
+        diff_loss = 100 if loss == 0 else abs(loss - prev_loss)
+        if not self.burn_in_done:
+            if self.args.exp_name == 'res' and diff_loss > self.args.beta:
+                lr = 0.0
+            elif self.args.exp_name == 'res' and diff_loss <= self.args.beta:
+                if verbose:
+                    print('_'*80)
+                    print(f'Burn-in of the critic done. Changing actor_lr from 0.0 to {self.args.actor_lr}')
+                    print('_'*80)
+                self.burn_in_done = True
+
+        for param_group in self.actor_optim.param_groups:
+            param_group['lr'] = lr
+
     def train(self):
         """
             Run the episodes for training
         """
-        print('#'*50)
-        print('Beginning the training...')
-        print('#'*50)
+        if MPI.COMM_WORLD.Get_rank() == 0:
+            print('_'*50)
+            print('Beginning the training...')
+            print('_'*50)
         num_cycles = 0
+        actor_losses = [0.0]    # to store actor losses for burn-in
+        critic_losses = [0.0]   # to store critic losses for burn-in
+        prev_losses = [0.0]
         for epoch in range(self.args.n_epochs):
+            
+            # change the actor learning rate from zero to actor_lr by checking burn-in
+            # check config.py for more information on args.beta_monitor
+            if self.args.beta_monitor == 'actor':
+                self.set_actor_lr(np.mean(actor_losses), np.mean(prev_losses))
+                prev_losses = actor_losses.copy()
+            elif self.args.beta_monitor == 'critic':
+                self.set_actor_lr(np.mean(critic_losses), np.mean(prev_losses))
+                prev_losses = critic_losses.copy()
+
             for cycle in range(self.args.n_cycles):
                 mpi_obs, mpi_ag, mpi_g, mpi_actions = [], [], [], []
                 for _ in range(self.args.num_rollouts_per_mpi):
@@ -180,6 +233,8 @@ class DDPG_Agent:
                     # train the network with 'n_batches' number of batches
                     actor_loss, critic_loss = self.update_network(self.train_steps)
                     self.train_steps += 1
+                    actor_losses.append(actor_loss)
+                    critic_losses.append(critic_loss)
                     actor_loss_cycle += actor_loss
                     critic_loss_cycle += critic_loss
                 if self.writer:
@@ -420,9 +475,9 @@ if __name__ == "__main__":
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     if MPI.COMM_WORLD.Get_rank() == 0:
-        print('#'*50)
+        print('_'*20)
         print('Device:',device)
-        print('#'*50)
+        print('_'*20)
     args.device = device
     args.mpi = True         # running on mpi mode
     #####################################
@@ -458,12 +513,14 @@ if __name__ == "__main__":
 
         start_time = time.strftime("%H_%M_%S-%d_%m_%Y", time.localtime())
         experiment_name = f"{args.exp_name}_{start_time}"
+        if args.exp_name == 'res':
+            experiment_name = f"{args.exp_name}_{args.beta_monitor}_{start_time}"
 
         # create only one wandb logger instead of 8/16!!!
         if MPI.COMM_WORLD.Get_rank() == 0:
-            print('#'*50)
+            print('_'*50)
             print('Creating wandboard...')
-            print('#'*50)
+            print('_'*50)
             wandb.init(project='Residual Policy Learning', entity='6-881_project', sync_tensorboard=True, config=vars(args), name=experiment_name, save_code=True)
             writer = SummaryWriter(f"/tmp/{experiment_name}")
             weight_save_path = os.path.join(wandb.run.dir, "model.ckpt")
@@ -471,7 +528,11 @@ if __name__ == "__main__":
             writer = None
             weight_save_path = "model_mpi.ckpt"
     ##########################################################################
-
+    print('_'*50)
+    print('Arguments:')
+    for arg in vars(args):
+        print(f'{arg} = {getattr(args, arg)}')
+    print('_'*50)
     # initialise the agent
     trainer = DDPG_Agent(args, env, save_dir=weight_save_path, device=device, writer=writer)
     # uncomment below 2 lines to monitor networks parameters
