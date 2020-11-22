@@ -252,7 +252,7 @@ class FetchSlideFrictionControl(gym.Env):
         self.metadata = self.fetch_env.metadata
         # change friction between all possible contacts
         # NOTE can only change to the last two indices to only change object and table friction
-        # NOTE @rhjiang as of now we'll work with the original friction
+        # as of now we'll work with the original friction
         # for i in range(len(self.fetch_env.env.sim.model.geom_friction)):
         #     self.fetch_env.env.sim.model.geom_friction[i] = [18e-2, 5.e-3, 1e-4]
         ###############################################
@@ -265,10 +265,10 @@ class FetchSlideFrictionControl(gym.Env):
         self.hand_higher = False
         self.hand_down = False
         self.hand_behind = False
-        # NOTE @ rhjiang taking only table and puck friction coeffs
+        # taking only table and puck friction coeffs
         self.mu_table = self.fetch_env.env.sim.model.geom_friction[-2][0]
         self.mu_object = self.fetch_env.env.sim.model.geom_friction[-1][0]
-        self.mu = np.max(self.mu_table, self.mu_object) # take max of the friction coeffs
+        self.mu = np.max(np.array([self.mu_table, self.mu_object])) # take max of the friction coeffs
         self.r = self.fetch_env.env.sim.model.geom_size[-1][0]
         self.dt = self.fetch_env.env.sim.model.opt.timestep
         self.g = 9.81
@@ -293,8 +293,9 @@ class FetchSlideFrictionControl(gym.Env):
         self.hand_higher = False
         self.hand_down = False
         self.hand_behind = False
-        # NOTE: @rhjiang choose d1 according to the dist between goal and object
+        # choose d1 according to the dist between goal and object
         # do not want it to be bigger than the distance we want to move the puck by
+        # d1 is the distance the gripper will move to slide the puck
         self.d1 = np.linalg.norm(goal_pos - object_pos)/5
         ############################
         return observation
@@ -345,30 +346,30 @@ class FetchSlideFrictionControl(gym.Env):
         if self.hand_behind and not self.hand_down:
             action = [0,0,-1,0]
             if grip_pos[2]-object_pos[2] <0.01:
-                self.d2 = (np.linalg.norm(goal_pos - grip_pos) - self.d1)
-                self.f = self.d2 * self.mu * self.g / self.d1   # NOTE @rhjiang made self.g = 9.81
+                # set constants related to puck sliding motion
+                self.d2 = (np.linalg.norm(goal_pos - grip_pos) - self.d1) # distance to slide without the gripper pushing
+                self.f = self.d2 * self.mu * self.g / self.d1   # coefficient of time in sdot equation
                 self.start_time = self.fetch_env.env.sim.data.time  # start the time once we are ready to hit
                 self.hand_down = True
                 if DEBUG:
                     print('Ready to HIT')
-        # now give impulse
+        # slide the puck
         if self.hand_down:
-            if np.linalg.norm(goal_pos - grip_pos) > self.d1:
+            if np.linalg.norm(goal_pos - grip_pos) > self.d2:
                 cur_time = self.fetch_env.env.sim.data.time
-                # NOTE @rhjiang multiplying by self.dt makes action_pos quite small
-                # NOTE @rhjiang time in your equation should be (current_time - time_at_the_start_of_hitting_action) right?
-                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.start_time))
+                # delta s = sdot * dt, where sdot = f*t and s is measured along direction from puck to goal
+                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.start_time) * self.dt)
             else:
                 action_pos = [0,0]
             action = action_pos[:2] + [0,0]
         action = np.array(action)
-        # NOTE @rhjiang added clipping here
+        # added clipping here
         return np.clip(action, -1, 1)
 
 
 if __name__ == "__main__":
     env_name = 'FetchSlideFrictionControl'
-    env = globals()[env_name]() # NOTE @rhjiang this will initialise the class as per the string env_name
+    env = globals()[env_name]() # this will initialise the class as per the string env_name
     env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True)
     successes = []
     # set the seeds
