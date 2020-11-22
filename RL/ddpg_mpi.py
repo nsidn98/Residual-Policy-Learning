@@ -1,6 +1,6 @@
 """
-    DDPG with HER
-    Code inspired from https://github.com/TianhongDai/hindsight-experience-replay
+    Implementation of Residual Policy Learning with DDPG+HER
+    DDPG with HER Code inspired from https://github.com/TianhongDai/hindsight-experience-replay
 """
 import gym
 import argparse
@@ -464,7 +464,7 @@ if __name__ == "__main__":
     from torch.utils.tensorboard import SummaryWriter
 
     from config import args
-    from utils import connected_to_internet
+    from utils import connected_to_internet, make_env
 
     # set parameters for threading
     os.environ['OMP_NUM_THREADS'] = '1'
@@ -482,7 +482,8 @@ if __name__ == "__main__":
     args.mpi = True         # running on mpi mode
     #####################################
 
-    env = gym.make(args.env_name)   # initialise the environment
+    env = make_env(args.env_name)   # initialise the environment
+    # env = gym.make(args.env_name)   # initialise the environment
 
     # set the random seeds for everything
     # random.seed(args.seed)

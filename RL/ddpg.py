@@ -398,7 +398,7 @@ if __name__ == "__main__":
     from torch.utils.tensorboard import SummaryWriter
 
     from config import args
-    from utils import connected_to_internet
+    from utils import connected_to_internet, make_env
 
     # check whether GPU is available or not
     use_cuda = torch.cuda.is_available()
@@ -410,7 +410,8 @@ if __name__ == "__main__":
     args.mpi = False        # not running on mpi mode
     #####################################
 
-    env = gym.make(args.env_name)   # initialise the environment
+    env = make_env(args.env_name)   # initialise the environment
+    # env = gym.make(args.env_name)   # initialise the environment
 
     # set the random seeds for everything
     # random.seed(args.seed)
