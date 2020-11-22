@@ -9,21 +9,15 @@
     FetchSlideImperfectControl:
         'FetchSlide-v1' with an imperfect controller
         This controller can at least slide the puck but not perfectly
+        As in does push it in some direction
         Action taken as:
             pi_theta(s) = pi(s) + f_theta(s)
     FetchSlideFrictionControl:
         'FetchSlide-v1' with a fairly good controller
-        This controller can slide the puck perfectly to the goal
-        for the original frictional coefficient
-        But now the friction coefficients are changed and hence it cannot
+        This controller cannot slide the puck perfectly to the goal
+        As in can push in the direction of the goal
         Action taken as:
             pi_theta(s) = pi(s) + f_theta(s)
-    FetchSlideNoisyControl:
-        'FetchSlide-v1' with a fairly good controller
-        This controller can slide the puck perfectly to the goal without noise
-        but due to the noise it cannot
-        Action taken as:
-            pi_theta(s_eps) = pi(s+eps) + f_theta(s+eps)
 """
 import gym
 from gym.utils import seeding
@@ -268,7 +262,7 @@ class FetchSlideFrictionControl(gym.Env):
         # NOTE @ rhjiang taking only table and puck friction coeffs
         self.mu_table = self.fetch_env.env.sim.model.geom_friction[-2][0]
         self.mu_object = self.fetch_env.env.sim.model.geom_friction[-1][0]
-        self.mu = np.max(self.mu_table, self.mu_object) # take max of the friction coeffs
+        self.mu = max(self.mu_table, self.mu_object) # take max of the friction coeffs
         self.r = self.fetch_env.env.sim.model.geom_size[-1][0]
         self.dt = self.fetch_env.env.sim.model.opt.timestep
         self.g = 9.81
@@ -346,7 +340,7 @@ class FetchSlideFrictionControl(gym.Env):
             action = [0,0,-1,0]
             if grip_pos[2]-object_pos[2] <0.01:
                 self.d2 = (np.linalg.norm(goal_pos - grip_pos) - self.d1)
-                self.f = self.d2 * self.mu * self.g / self.d1   # NOTE @rhjiang made self.g = 9.81
+                self.f = self.d2 * self.mu * self.g / self.d1   
                 self.start_time = self.fetch_env.env.sim.data.time  # start the time once we are ready to hit
                 self.hand_down = True
                 if DEBUG:

@@ -529,11 +529,12 @@ if __name__ == "__main__":
             writer = None
             weight_save_path = "model_mpi.ckpt"
     ##########################################################################
-    print('_'*50)
-    print('Arguments:')
-    for arg in vars(args):
-        print(f'{arg} = {getattr(args, arg)}')
-    print('_'*50)
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        print('_'*50)
+        print('Arguments:')
+        for arg in vars(args):
+            print(f'{arg} = {getattr(args, arg)}')
+        print('_'*50)
     # initialise the agent
     trainer = DDPG_Agent(args, env, save_dir=weight_save_path, device=device, writer=writer)
     # uncomment below 2 lines to monitor networks parameters
