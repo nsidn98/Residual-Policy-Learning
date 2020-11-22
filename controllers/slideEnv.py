@@ -175,8 +175,8 @@ class FetchSlideImperfectControl(gym.Env):
         if self.hand_down:
             action_pos = list(self.hit * (goal_pos[:2]-grip_pos[:2]) )
             action = action_pos + [0,0]
-        # print(self.fetch_env.env.sim.data.time)
-        return action
+        action = np.array(action)
+        return np.clip(action, -1, 1)
 
 class FetchSlideFrictionControl(gym.Env):
     """
@@ -252,8 +252,9 @@ class FetchSlideFrictionControl(gym.Env):
         self.metadata = self.fetch_env.metadata
         # change friction between all possible contacts
         # NOTE can only change to the last two indices to only change object and table friction
-        for i in range(len(self.fetch_env.env.sim.model.geom_friction)):
-            self.fetch_env.env.sim.model.geom_friction[i] = [18e-2, 5.e-3, 1e-4]
+        # NOTE @rhjiang as of now we'll work with the original friction
+        # for i in range(len(self.fetch_env.env.sim.model.geom_friction)):
+        #     self.fetch_env.env.sim.model.geom_friction[i] = [18e-2, 5.e-3, 1e-4]
         ###############################################
 
         self.max_episode_steps = self.fetch_env._max_episode_steps
@@ -264,12 +265,13 @@ class FetchSlideFrictionControl(gym.Env):
         self.hand_higher = False
         self.hand_down = False
         self.hand_behind = False
-        self.mu = self.fetch_env.env.sim.model.geom_friction[0][0]
+        # NOTE @ rhjiang taking only table and puck friction coeffs
+        self.mu_table = self.fetch_env.env.sim.model.geom_friction[-2][0]
+        self.mu_object = self.fetch_env.env.sim.model.geom_friction[-1][0]
+        self.mu = np.max(self.mu_table, self.mu_object) # take max of the friction coeffs
         self.r = self.fetch_env.env.sim.model.geom_size[-1][0]
         self.dt = self.fetch_env.env.sim.model.opt.timestep
-        self.d1 = 0.05
-        self.d2 = -1
-        self.f = -1
+        self.g = 9.81
         ############################
 
     def step(self, residual_action:np.ndarray):
@@ -283,12 +285,17 @@ class FetchSlideFrictionControl(gym.Env):
     def reset(self):
         observation = self.fetch_env.reset()
         self.last_observation = observation.copy()
+        object_pos = observation['observation'][3:6]
+        goal_pos = observation['desired_goal']
         ############################
         # parameters for the imperfect controller
         self.hand_above = False
         self.hand_higher = False
         self.hand_down = False
         self.hand_behind = False
+        # NOTE: @rhjiang choose d1 according to the dist between goal and object
+        # do not want it to be bigger than the distance we want to move the puck by
+        self.d1 = np.linalg.norm(goal_pos - object_pos)/5
         ############################
         return observation
 
@@ -339,35 +346,36 @@ class FetchSlideFrictionControl(gym.Env):
             action = [0,0,-1,0]
             if grip_pos[2]-object_pos[2] <0.01:
                 self.d2 = (np.linalg.norm(goal_pos - grip_pos) - self.d1)
-                self.f = self.d2*self.mu*9.81/self.d1
+                self.f = self.d2 * self.mu * self.g / self.d1   # NOTE @rhjiang made self.g = 9.81
+                self.start_time = self.fetch_env.env.sim.data.time  # start the time once we are ready to hit
                 self.hand_down = True
                 if DEBUG:
                     print('Ready to HIT')
         # now give impulse
         if self.hand_down:
-            if np.linalg.norm(goal_pos - grip_pos)>self.d1:
-                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos)*self.f*self.fetch_env.env.sim.data.time*self.dt)
+            if np.linalg.norm(goal_pos - grip_pos) > self.d1:
+                cur_time = self.fetch_env.env.sim.data.time
+                # NOTE @rhjiang multiplying by self.dt makes action_pos quite small
+                # NOTE @rhjiang time in your equation should be (current_time - time_at_the_start_of_hitting_action) right?
+                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.start_time))
             else:
                 action_pos = [0,0]
             action = action_pos[:2] + [0,0]
-        # print(self.fetch_env.env.sim.data.time)
-        return action
+        action = np.array(action)
+        # NOTE @rhjiang added clipping here
+        return np.clip(action, -1, 1)
 
 
 if __name__ == "__main__":
-    # env = FetchSlide()
-    # env_name = 'FetchSlide'
-    env = FetchSlideFrictionControl()
     env_name = 'FetchSlideFrictionControl'
-    # env = FetchSlideImperfectControl()
-    # env_name = 'FetchSlideImperfectControl'
+    env = globals()[env_name]() # NOTE @rhjiang this will initialise the class as per the string env_name
     env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True)
     successes = []
     # set the seeds
     env.seed(1)
     env.action_space.seed(1)
     env.observation_space.seed(1)
-    for ep in range(1):
+    for ep in range(10):
         success = np.zeros(env.max_episode_steps)
         obs = env.reset()
         action = [0,0,0,0]  # give zero action at first time step
