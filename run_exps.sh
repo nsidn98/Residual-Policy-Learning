@@ -25,7 +25,7 @@ for i in ${!seeds[@]}; do
     for j in ${!envs[@]}; do
         # run for all different envs
         echo "Env Name: ${envs[$j]} | Seed: ${seeds[$i]} | Exp Name: ${exp_names[$j]} | out_${envs[$j]}_${seeds[i]}"
-        mpirun python -m RL.ddpg_mpi --env_name ${envs[$j]} --seed ${seeds[$i]} --n_epochs 500  --exp_name ${exp_names[$j]} 2>&1 | tee out_${envs[$j]}_${seeds[i]}
+        mpirun python -m RL.ddpg_mpi --env_name ${envs[$j]} --seed ${seeds[$i]} --n_epochs 500  --exp_name ${exp_names[$j]} 2>&1 | tee exp_outputs/out_${envs[$j]}_${seeds[i]}
         # echo "Env Name: ${envs[$j]} Seed: ${seeds[$i]} out_${envs[$j]}_${seeds[i]}"
     done
 done
