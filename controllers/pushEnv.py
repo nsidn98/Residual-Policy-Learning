@@ -164,7 +164,7 @@ class FetchPushSlippery(gym.Env):
         push: float
             Scaling factor to push the puck
     """
-    def __init__(self, kp:float=5, push:float=5, new_mu:float=0.1, *args, **kwargs):
+    def __init__(self, kp:float=10, push:float=2, new_mu:float=0.1, *args, **kwargs):
         self.fetch_env = gym.make('FetchPush-v1')
         self.metadata = self.fetch_env.metadata
         self.max_episode_steps = self.fetch_env._max_episode_steps
@@ -271,9 +271,10 @@ class FetchPushSlippery(gym.Env):
         return np.clip(action,-1,1)
 
 if __name__ == "__main__":
-    env_name = 'FetchPushImperfect'
+    # env_name = 'FetchPushImperfect'
     env_name = 'FetchPushSlippery'
     env = globals()[env_name]() # this will initialise the class as per the string env_nameå
+    env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True) # save video
     successes = []
     # set the seeds
     env.seed(1)
