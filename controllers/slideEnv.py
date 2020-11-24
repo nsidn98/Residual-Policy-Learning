@@ -536,7 +536,7 @@ class FetchSlideSlapControl(gym.Env):
                 #print(self.prev_speed)
                 next_speed = self.prev_speed + (self.a * dtime)
                 #print(next_speed)
-                action_pos = list(((next_speed+self.prev_speed)/2)*calc_direction(object_pos,goal_pos))
+                action_pos = list((dtime*(next_speed+self.prev_speed)/2)*calc_direction(object_pos,goal_pos))
                 self.prev_speed = next_speed
                 self.prev_time = time
             else:
@@ -548,7 +548,7 @@ class FetchSlideSlapControl(gym.Env):
         return np.clip(action, -1, 1)
 
 if __name__ == "__main__":
-    env_name = 'FetchSlideFrictionControl'
+    env_name = 'FetchSlideSlapControl'
     env = globals()[env_name]() # this will initialise the class as per the string env_name
     #env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True)
     successes = []
