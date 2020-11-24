@@ -354,7 +354,7 @@ class FetchSlideFrictionControl(gym.Env):
                 cur_time = self.fetch_env.env.sim.data.time
                 # delta s = sdot * dt, where sdot = f*t and s is measured along direction from puck to goal
                 print(cur_time - self.prev_time)
-                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.prev_time) * (cur_time - self.prev_time))
+                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.start_time) * (cur_time - self.prev_time))
                 self.prev_time = cur_time
             else:
                 action_pos = [0,0]
@@ -483,7 +483,7 @@ class FetchSlideSlapControl(gym.Env):
         # now move the hand down
         if self.hand_behind and not self.hand_down:
             action = [0,0,-1,0]
-            if grip_pos[2]-object_pos[2] <0.02:
+            if grip_pos[2]-object_pos[2] <0.01:
                 self.start_time = self.fetch_env.env.sim.data.time  # start the time once we are ready to hit
                 self.hand_down = True
                 if DEBUG:
