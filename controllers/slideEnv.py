@@ -266,8 +266,6 @@ class FetchSlideFrictionControl(gym.Env):
         self.r = self.fetch_env.env.sim.model.geom_size[-1][0]
         self.dt = self.fetch_env.env.sim.model.opt.timestep
         self.g = 9.81
-
-        self.prev_time = 0
         ############################
 
     def step(self, residual_action:np.ndarray):
@@ -294,7 +292,6 @@ class FetchSlideFrictionControl(gym.Env):
         # d1 is the distance the gripper will move to slide the puck
         self.d1 = np.linalg.norm(goal_pos - object_pos)/5
 
-        self.prev_time = 0
         ############################
         return observation
 
@@ -347,6 +344,7 @@ class FetchSlideFrictionControl(gym.Env):
                 self.d2 = (np.linalg.norm(goal_pos - grip_pos) - self.d1)
                 self.f = self.d2 * self.mu * self.g / self.d1
                 self.start_time = self.fetch_env.env.sim.data.time  # start the time once we are ready to hit
+                self.prev_time = self.start_time
                 self.hand_down = True
                 if DEBUG:
                     print('Ready to HIT')
@@ -355,7 +353,8 @@ class FetchSlideFrictionControl(gym.Env):
             if np.linalg.norm(goal_pos - grip_pos) > self.d2:
                 cur_time = self.fetch_env.env.sim.data.time
                 # delta s = sdot * dt, where sdot = f*t and s is measured along direction from puck to goal
-                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.start_time) * (cur_time - self.prev_time))
+                print(cur_time - self.prev_time)
+                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.prev_time) * (cur_time - self.prev_time))
                 self.prev_time = cur_time
             else:
                 action_pos = [0,0]
@@ -538,6 +537,7 @@ if __name__ == "__main__":
     env.action_space.seed(1)
     env.observation_space.seed(1)
     for ep in range(10):
+        print('new episode')
         success = np.zeros(env.max_episode_steps)
         obs = env.reset()
         action = [0,0,0,0]  # give zero action at first time step
