@@ -290,8 +290,7 @@ class FetchSlideFrictionControl(gym.Env):
         # choose d1 according to the dist between goal and object
         # do not want it to be bigger than the distance we want to move the puck by
         # d1 is the distance the gripper will move to slide the puck
-        self.d1 = np.linalg.norm(goal_pos - object_pos)/5
-
+        # self.d1 = np.linalg.norm(goal_pos - object_pos)/5
         ############################
         return observation
 
@@ -341,19 +340,19 @@ class FetchSlideFrictionControl(gym.Env):
         if self.hand_behind and not self.hand_down:
             action = [0,0,-1,0]
             if grip_pos[2]-object_pos[2] <0.01:
-                self.d2 = (np.linalg.norm(goal_pos - grip_pos) - self.d1)
-                self.f = self.d2 * self.mu * self.g / self.d1
                 self.start_time = self.fetch_env.env.sim.data.time  # start the time once we are ready to hit
                 self.prev_time = self.start_time
+                self.d1 = np.linalg.norm(goal_pos[:-1] - grip_pos[:-1])/5 # Define d1 wrt the initial gripper pose rather than the object pose
+                self.d2 = (np.linalg.norm(goal_pos[:-1] - grip_pos[:-1]) - self.d1)
+                self.f = self.d2 * self.mu * self.g / self.d1
                 self.hand_down = True
                 if DEBUG:
                     print('Ready to HIT')
         # slide the puck
         if self.hand_down:
-            if np.linalg.norm(goal_pos - grip_pos) > self.d2:
+            if np.linalg.norm(goal_pos[:-1] - grip_pos[:-1]) > self.d2:
                 cur_time = self.fetch_env.env.sim.data.time
                 # delta s = sdot * dt, where sdot = f*t and s is measured along direction from puck to goal
-                print(cur_time - self.prev_time)
                 action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.start_time) * (cur_time - self.prev_time))
                 self.prev_time = cur_time
             else:
@@ -503,7 +502,7 @@ class FetchSlideSlapControl(gym.Env):
             self.goal_speed = np.sqrt(2*self.mu*self.g*self.dist_to_goal)
             #print('this is the goal speed ' + str(self.goal_speed))
             #print('this is the timestep ' + str(self.dt))
-            self.a = (self.goal_speed**2)/(disp)
+            self.a = (self.goal_speed**2)/(2*disp)
             #print('this is a ' + str(self.a))
             #print('this is 0.025+self.r ' +str(0.025+self.r))
             #print('this is the distance between gripper pos and object pos ' +str(np.linalg.norm(object_pos-grip_pos)))
