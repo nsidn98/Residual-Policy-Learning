@@ -266,6 +266,8 @@ class FetchSlideFrictionControl(gym.Env):
         self.r = self.fetch_env.env.sim.model.geom_size[-1][0]
         self.dt = self.fetch_env.env.sim.model.opt.timestep
         self.g = 9.81
+
+        self.prev_time = 0
         ############################
 
     def step(self, residual_action:np.ndarray):
@@ -291,6 +293,8 @@ class FetchSlideFrictionControl(gym.Env):
         # do not want it to be bigger than the distance we want to move the puck by
         # d1 is the distance the gripper will move to slide the puck
         self.d1 = np.linalg.norm(goal_pos - object_pos)/5
+
+        self.prev_time = 0
         ############################
         return observation
 
@@ -351,7 +355,8 @@ class FetchSlideFrictionControl(gym.Env):
             if np.linalg.norm(goal_pos - grip_pos) > self.d2:
                 cur_time = self.fetch_env.env.sim.data.time
                 # delta s = sdot * dt, where sdot = f*t and s is measured along direction from puck to goal
-                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.start_time) * self.dt)
+                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.start_time) * (cur_time - self.prev_time))
+                self.prev_time = cur_time
             else:
                 action_pos = [0,0]
             action = action_pos[:2] + [0,0]
@@ -524,7 +529,7 @@ class FetchSlideSlapControl(gym.Env):
         return np.clip(action, -1, 1)
 
 if __name__ == "__main__":
-    env_name = 'FetchSlideSlapControl'
+    env_name = 'FetchSlideFrictionControl'
     env = globals()[env_name]() # this will initialise the class as per the string env_name
     #env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True)
     successes = []
