@@ -241,7 +241,7 @@ class FetchSlideFrictionControl(gym.Env):
                             [1.e-01, 5.e-03, 1.e-04],   <-  'table0'
                             [1.e-01, 5.e-03, 1.e-04]])  <-  'object0'
     """
-    def __init__(self, kp:float=7, *args, **kwargs):
+    def __init__(self, kp:float=10, hit:float=5,*args, **kwargs):
         self.fetch_env = gym.make('FetchSlide-v1')
         self.metadata = self.fetch_env.metadata
         # change friction between all possible contacts
@@ -255,6 +255,8 @@ class FetchSlideFrictionControl(gym.Env):
         self.action_space = self.fetch_env.action_space
         self.observation_space = self.fetch_env.observation_space
         self.kp = kp
+        self.hit = hit
+        ############################
         self.hand_above = False
         self.hand_higher = False
         self.hand_down = False
@@ -279,8 +281,8 @@ class FetchSlideFrictionControl(gym.Env):
     def reset(self):
         observation = self.fetch_env.reset()
         self.last_observation = observation.copy()
-        object_pos = observation['observation'][3:6]
-        goal_pos = observation['desired_goal']
+        #object_pos = observation['observation'][3:6]
+        #goal_pos = observation['desired_goal']
         ############################
         # parameters for the imperfect controller
         self.hand_above = False
@@ -342,26 +344,42 @@ class FetchSlideFrictionControl(gym.Env):
             if grip_pos[2]-object_pos[2] <0.01:
                 self.start_time = self.fetch_env.env.sim.data.time  # start the time once we are ready to hit
                 self.prev_time = self.start_time
-                self.d1 = np.linalg.norm(goal_pos[:-1] - grip_pos[:-1])/5 # Define d1 wrt the initial gripper pose rather than the object pose
-                self.d2 = (np.linalg.norm(goal_pos[:-1] - grip_pos[:-1]) - self.d1)
+                self.d1 = np.linalg.norm(goal_pos[:-1] - object_pos[:-1])/5 # Define d1 wrt the initial gripper pose rather than the object pose
+                self.d2 = (np.linalg.norm(goal_pos[:-1] - object_pos[:-1]) - self.d1)
                 self.f = self.d2 * self.mu * self.g / self.d1
+
                 self.hand_down = True
+
+                # Debugging stuff
+                print('d2 = ' + str(self.d2))
+                print('mu = ' + str(self.mu))
+                v1 = np.sqrt(2*self.d2*self.mu*self.g)
+                print('v1 = ' +str(v1))
+                print('d1 = ' + str(self.d1))
+                a = v1**2/(2*self.d1)
+                print('a = '+str(a))
+
                 if DEBUG:
                     print('Ready to HIT')
         # slide the puck
         if self.hand_down:
+            v1 = np.sqrt(2*self.d2*self.mu*self.g)
+            a = v1**2/(2*self.d1)
             if np.linalg.norm(goal_pos[:-1] - grip_pos[:-1]) > self.d2:
+                print('this is the distance ' + str(np.linalg.norm(goal_pos[:-1] - grip_pos[:-1])))
                 cur_time = self.fetch_env.env.sim.data.time
                 # delta s = sdot * dt, where sdot = f*t and s is measured along direction from puck to goal
-                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.start_time) * (cur_time - self.prev_time))
+                action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.start_time)*(cur_time - self.prev_time))
                 self.prev_time = cur_time
+                #print('current speed = ' + str(a*(cur_time-self.start_time)))
             else:
+                #print('no push')
                 action_pos = [0,0]
             action = action_pos[:2] + [0,0]
-        action = np.array(action)
+            print('commanded action = ' + str(np.linalg.norm(action[0:2])))
         # added clipping here
+        #return action
         return np.clip(action, -1, 1)
-
 
 class FetchSlideSlapControl(gym.Env):
     """
@@ -514,15 +532,18 @@ class FetchSlideSlapControl(gym.Env):
             time = self.fetch_env.env.sim.data.time
             dtime = time - self.prev_time
             if np.linalg.norm(goal_pos[:-1] - grip_pos[:-1]) > self.dist_to_goal:
+                print('this is the distance ' + str(np.linalg.norm(goal_pos[:-1] - grip_pos[:-1])))
                 #print(self.prev_speed)
                 next_speed = self.prev_speed + (self.a * dtime)
                 #print(next_speed)
-                action_pos = list((dtime*(next_speed+self.prev_speed)/2)*calc_direction(object_pos,goal_pos))
+                action_pos = list(((next_speed+self.prev_speed)/2)*calc_direction(object_pos,goal_pos))
                 self.prev_speed = next_speed
                 self.prev_time = time
             else:
                 action_pos = [0,0]
             action = action_pos[:2] + [0,0]
+            print('commanded action = ' + str(np.linalg.norm(action[0:2])))
+
         # added clipping here
         return np.clip(action, -1, 1)
 
