@@ -268,8 +268,8 @@ class DDPG_Agent:
                 print(f'Epoch:{epoch}\tSuccess Rate:{success_rate:.3f}')
                 if self.writer:
                     self.writer.add_scalar('Success Rate/Success Rate', success_rate, self.sim_steps)
-                    self.writer.add_scalar('Epoch Losses/Average Critic Loss', np.mean(critic_losses), self.epoch)
-                    self.writer.add_scalar('Epoch Losses/Average Actor Loss', np.mean(actor_losses), self.epoch)
+                    self.writer.add_scalar('Epoch Losses/Average Critic Loss', np.mean(critic_losses), epoch)
+                    self.writer.add_scalar('Epoch Losses/Average Actor Loss', np.mean(actor_losses), epoch)
                 # save checkpoints
                 self.save_checkpoint(self.save_dir)
 
