@@ -2,6 +2,7 @@
     Implementation of Residual Policy Learning with DDPG+HER
     DDPG with HER Code inspired from https://github.com/TianhongDai/hindsight-experience-replay
 """
+import copy
 import gym
 import argparse
 import torch
@@ -138,12 +139,14 @@ class DDPG_Agent:
                 To print the change in learning rate
         """
         lr = self.args.actor_lr
+        coin_flipping = False
         # loss is zero only in the first epoch hence do not change lr then
         # and that's why give a large value to diff_loss
         diff_loss = 100 if loss == 0 else abs(loss - prev_loss)
         if not self.burn_in_done:
             if self.args.exp_name == 'res' and diff_loss > self.args.beta:
                 lr = 0.0
+                coin_flipping = True
             elif self.args.exp_name == 'res' and diff_loss <= self.args.beta:
                 if verbose:
                     print('_'*80)
@@ -153,6 +156,7 @@ class DDPG_Agent:
 
         for param_group in self.actor_optim.param_groups:
             param_group['lr'] = lr
+        return coin_flipping
 
     def train(self):
         """
@@ -166,15 +170,17 @@ class DDPG_Agent:
         actor_losses = [0.0]    # to store actor losses for burn-in
         critic_losses = [0.0]   # to store critic losses for burn-in
         prev_losses = [0.0]
+        coin_flipping = False   # choose whether we want deterministic or not
+        deterministic = False   # whether the whole episode should be noise and randomness free
         for epoch in range(self.args.n_epochs):
             
             # change the actor learning rate from zero to actor_lr by checking burn-in
             # check config.py for more information on args.beta_monitor
             if self.args.beta_monitor == 'actor':
-                self.set_actor_lr(np.mean(actor_losses), np.mean(prev_losses))
+                coin_flipping = self.set_actor_lr(np.mean(actor_losses), np.mean(prev_losses))
                 prev_losses = actor_losses.copy()
             elif self.args.beta_monitor == 'critic':
-                self.set_actor_lr(np.mean(critic_losses), np.mean(prev_losses))
+                coin_flipping = self.set_actor_lr(np.mean(critic_losses), np.mean(prev_losses))
                 prev_losses = critic_losses.copy()
 
             for cycle in range(self.args.n_cycles):
@@ -183,18 +189,29 @@ class DDPG_Agent:
                     ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
                     # reset the environment
                     observation = self.env.reset()
+                    observation_new = copy.deepcopy(observation)
                     obs = observation['observation']
                     ag = observation['achieved_goal']
                     g = observation['desired_goal']
 
+                    random_eps = self.args.random_eps
+                    noise_eps  = self.args.noise_eps
+                    if coin_flipping:
+                        deterministic = np.random.random() < self.args.coin_flipping_prob  # NOTE/TODO change here
+                    if deterministic:
+                        random_eps = 0.0
+                        noise_eps = 0.0
                     # collect the sample episode wise
                     for t in range(self.env_params['max_timesteps']):
-                        # take actions 
-                        # NOTE/TODO: add controller here OR make a wrapper OR add it in self.select_actions()
+                        # take actions
                         with torch.no_grad():
                             state = self.preprocess_inputs(obs, g)
                             pi = self.actor_network(state)
-                            action = self.select_actions(pi)
+                            if self.args.exp_name == 'res':
+                                controller_action = self.get_controller_actions(observation_new)
+                                action = self.select_actions(pi, noise_eps=noise_eps, random_eps= random_eps, controller_action=controller_action)
+                            else:
+                                action = self.select_actions(pi, noise_eps=noise_eps, random_eps= random_eps, controller_action=None)
                         # give the action to the environment
                         observation_new, _, _, info = self.env.step(action)
                         self.sim_steps += 1                     # increase the simulation timestep by one
@@ -247,9 +264,12 @@ class DDPG_Agent:
             success_rate = self.eval_agent()
             # print only once instead of the huge monstrosity!!!
             if MPI.COMM_WORLD.Get_rank() == 0:
+                print(f'Epoch Critic: {np.mean(critic_losses):.3f} Epoch Actor:{np.mean(actor_losses):.3f}')
                 print(f'Epoch:{epoch}\tSuccess Rate:{success_rate:.3f}')
                 if self.writer:
                     self.writer.add_scalar('Success Rate/Success Rate', success_rate, self.sim_steps)
+                    self.writer.add_scalar('Epoch Losses/Average Critic Loss', np.mean(critic_losses), self.epoch)
+                    self.writer.add_scalar('Epoch Losses/Average Actor Loss', np.mean(actor_losses), self.epoch)
                 # save checkpoints
                 self.save_checkpoint(self.save_dir)
 
@@ -267,24 +287,42 @@ class DDPG_Agent:
         inputs = inputs.to(self.device)
         return inputs
     
-    def select_actions(self, pi: torch.Tensor) -> np.ndarray:
+    def get_controller_actions(self, obs:dict):
+        """
+            Return the controller action if residual learning
+        """
+        return self.env.controller_action(obs, take_action=False)
+    
+    def select_actions(self, pi: torch.Tensor, noise_eps:float, random_eps:float, controller_action=None) -> np.ndarray:
         """
             Take action
             with a probability of self.args.random_eps, it will take random actions
             otherwise, this will add a gaussian noise to the action along with clipping
+            pi: torch.Tensor
+                The action given by the actor
+            noise_eps: float
+                The random gaussian noise added to actor output
+            random_eps: float
+                Probability of taking random action
+            controller_action: None or np.ndarray
+                To subtract from random action
         """
-        # transfer action from CUDA to CPU is using GPU and make numpy array out of it
+        # transfer action from CUDA to CPU if using GPU and make numpy array out of it
         action = pi.cpu().numpy().squeeze()
 
         # add the gaussian
-        action += self.args.noise_eps * self.env_params['action_max'] * np.random.randn(*action.shape)
+        action += noise_eps * self.env_params['action_max'] * np.random.randn(*action.shape)
         action = np.clip(action, -self.env_params['action_max'], self.env_params['action_max'])
 
         # random actions
         random_actions = np.random.uniform(low=-self.env_params['action_max'], high=self.env_params['action_max'], \
                                             size=self.env_params['action'])
+        # if residual learning, subtract the conroller action so that we don't add it twice
+        if self.args.exp_name == 'res':
+            random_actions = random_actions - controller_action
         # choose whether to take random actions or not
-        action += np.random.binomial(1, self.args.random_eps, 1)[0] * (random_actions - action)
+        rand = np.random.binomial(1, random_eps, 1)[0]
+        action += rand * (random_actions - action)  # will be equal to either random_actions or action
         return action
 
     def preprocess_og(self, o:np.ndarray, g:np.ndarray) -> Tuple[np.ndarray, np.ndarray]:

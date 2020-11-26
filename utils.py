@@ -3,6 +3,8 @@
 """
 import gym
 import controllers.slideEnv as slideEnv
+import controllers.pushEnv as pushEnv
+import controllers.pickAndPlaceEnv as pickPlaceEnv
 import requests
 
 def connected_to_internet(url:str='http://www.google.com/', timeout:int=5):
@@ -27,11 +29,34 @@ def make_env(env_name:str):
         # check if environment exists in gym
         return gym.make(env_name)
     except:
-        # else import from custom environment file
-        return getattr(slideEnv, env_name)()
-    else:
-        # else the name is wrong
-        print(f"Environment with name {env_name} doesn't exist! Check again")
+        pass
+    try:
+        # else import from custom slide environment file
+       return getattr(slideEnv, env_name)()
+    except:
+        pass
+    try:
+       return getattr(pushEnv, env_name)()
+    except:
+        pass
+    try:
+       return getattr(pickPlaceEnv, env_name)()
+    except:
+        pass 
+    # try:
+    #     # check if environment exists in gym
+    #     return gym.make(env_name)
+    # except AttributeError:
+    #     # else import from custom environment file
+    #     return getattr(slideEnv, env_name)()
+    # except (gym.error.Error, AttributeError):
+    #     return getattr(pushEnv, env_name)()
+    # except (gym.error.Error, AttributeError):
+    #     return getattr(pickPlaceEnv, env_name)()
+    # except Exception as e:
+        
+    # except:
+    #     return getattr(pickPlaceEnv, env_name)()
 
 if __name__ == "__main__":
     env_names = ['FetchSlide-v1','FetchSlide','FetchSlideImperfectControl']

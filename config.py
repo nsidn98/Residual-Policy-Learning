@@ -52,6 +52,8 @@ parser.add_argument('--noise_eps', type=float, default=0.2,
                     help='Scale of additive Gaussian Noise')
 parser.add_argument('--random_eps', type=float, default=0.3,
                     help='Probability of taking random actions')
+parser.add_argument('--coin_flipping_prob', type=float, default=0.5,
+                    help='Probability for coin flipping')
 
 # clipping stuff
 parser.add_argument('--clip_obs', type=float, default=200,

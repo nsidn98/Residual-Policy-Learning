@@ -49,7 +49,7 @@ class FetchPickAndPlacePerfect(gym.Env):
         kp: float
             Scaling factor for position control
     """
-    def __init__(self, kp:float=5, *args, **kwargs):
+    def __init__(self, kp:float=10, *args, **kwargs):
         self.fetch_env = gym.make('FetchPickAndPlace-v1')
         self.metadata = self.fetch_env.metadata
         self.max_episode_steps = self.fetch_env._max_episode_steps
@@ -91,12 +91,14 @@ class FetchPickAndPlacePerfect(gym.Env):
     def compute_reward(self, *args, **kwargs):
         return self.fetch_env.compute_reward(*args, **kwargs)
 
-    def controller_action(self, obs:Dict, DEBUG:bool=False):
+    def controller_action(self, obs:Dict, take_action:bool=True, DEBUG:bool=False):
         """
             Given an observation return actions according
             to an imperfect controller
             [grip_pos, object_pos, object_rel_pos, gripper_state, object_rot,
                      object_velp, object_velr, grip_velp, gripper_vel]
+            take_action: bool
+                Whether use this to take action in environment or just use for subtracting from rand actions
         """
         grip_pos = obs['observation'][:3]
         object_pos = obs['observation'][3:6]
@@ -111,8 +113,9 @@ class FetchPickAndPlacePerfect(gym.Env):
                 action = action_pos[:3] + [1]   # open the gripper
                 # if we are close to the object close the gripper
                 if np.linalg.norm(action_pos) < self.height_threshold:
-                    action = action_pos[:3] + [-1]  # close the gripper
-                    self.object_in_hand = True
+                    action = [0,0,0] + [-1]  # close the gripper
+                    if take_action:
+                        self.object_in_hand = True
         # once object is in hand, move towards goal
         else:
             p_rel = obs['desired_goal'] - obs['achieved_goal']
@@ -120,7 +123,8 @@ class FetchPickAndPlacePerfect(gym.Env):
             action = action_pos + [-1]
         action = np.array(action)
         # return action
-        return np.clip(action,-1,1)
+        controller_action_out = np.clip(action,-1,1)
+        return controller_action_out
 
 class FetchPickAndPlaceSticky(gym.Env):
     """
@@ -134,7 +138,7 @@ class FetchPickAndPlaceSticky(gym.Env):
         kp: float
             Scaling factor for position control
     """
-    def __init__(self, kp:float=5, *args, **kwargs):
+    def __init__(self, kp:float=10, *args, **kwargs):
         self.fetch_env = gym.make('FetchPickAndPlace-v1')
         self.metadata = self.fetch_env.metadata
         self.max_episode_steps = self.fetch_env._max_episode_steps
@@ -225,7 +229,7 @@ class FetchPickAndPlaceNoisy(gym.Env):
         kp: float
             Scaling factor for position control
     """
-    def __init__(self, kp:float=5, *args, **kwargs):
+    def __init__(self, kp:float=10, *args, **kwargs):
         self.fetch_env = gym.make('FetchPickAndPlace-v1')
         self.metadata = self.fetch_env.metadata
         self.max_episode_steps = self.fetch_env._max_episode_steps
@@ -310,11 +314,11 @@ class FetchPickAndPlaceNoisy(gym.Env):
         return np.clip(action,-1,1)
 
 if __name__ == "__main__":
-    # env_name = 'FetchPickAndPlacePerfect'
+    env_name = 'FetchPickAndPlacePerfect'
     # env_name = 'FetchPickAndPlaceSticky'
-    env_name = 'FetchPickAndPlaceNoisy'
-    env = globals()[env_name](10) # this will initialise the class as per the string env_nameå
-    env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True)
+    # env_name = 'FetchPickAndPlaceNoisy'
+    env = globals()[env_name]() # this will initialise the class as per the string env_name
+    # env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True)
     successes = []
     # set the seeds
     env.seed(1)
