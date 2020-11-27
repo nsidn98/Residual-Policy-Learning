@@ -472,7 +472,7 @@ if __name__ == "__main__":
             # NOTE this is only for running on MIT Supercloud
             with open(os.path.expanduser('~')+'/keys.json') as json_file: 
                 key = json.load(json_file)
-                my_wandb_api_key = key['nsidn98_wandb_api_key'] # NOTE change here as well
+                my_wandb_api_key = key['my_wandb_api_key'] # NOTE change here as well
             os.environ["WANDB_API_KEY"] = my_wandb_api_key # my Wandb api key
             os.environ["WANDB_MODE"] = "dryrun"
 
