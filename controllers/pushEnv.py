@@ -102,12 +102,14 @@ class FetchPushImperfect(gym.Env):
     def compute_reward(self, *args, **kwargs):
         return self.fetch_env.compute_reward(*args, **kwargs)
 
-    def controller_action(self, obs:Dict, DEBUG:bool=False):
+    def controller_action(self, obs:Dict, take_action:bool=True, DEBUG:bool=False):
         """
             Given an observation return actions according
             to an imperfect controller
             [grip_pos, object_pos, object_rel_pos, gripper_state, object_rot,
                      object_velp, object_velr, grip_velp, gripper_vel]
+            take_action: bool
+                Whether use this to take action in environment or just use for subtracting from rand actions
         """
         grip_pos = obs['observation'][:3]
         object_pos = obs['observation'][3:6]
@@ -117,7 +119,8 @@ class FetchPushImperfect(gym.Env):
         if not self.hand_higher:
             action = [0,0,1,0]
             if grip_pos[2]-object_pos[2] > 0.05:
-                self.hand_higher = True
+                if take_action:
+                    self.hand_higher = True
                 if DEBUG:
                     print('Hand lifted from the table')
         # once above, move it behind
@@ -126,21 +129,24 @@ class FetchPushImperfect(gym.Env):
             action_pos = list(self.kp * (goal_grip_pos - grip_pos))
             action = action_pos[:2] + [0,0]
             if np.linalg.norm(grip_pos[:2]-goal_grip_pos[:2]) < 0.0005:
-                self.hand_behind = True
+                if take_action:
+                    self.hand_behind = True
                 if DEBUG:
                     print('Hand has moved behind')
         # now move the hand down
         if self.hand_behind and not self.hand_down:
             action = [0,0,-1,0]
             if grip_pos[2]-object_pos[2] < 0.005:
-                self.hand_down = True
+                if take_action:
+                    self.hand_down = True
                 if DEBUG:
                     print('Ready to HIT')
         # now move the hand down
         if self.hand_behind and not self.hand_down:
             action = [0,0,-1,0]
             if grip_pos[2]-object_pos[2]<0.01:
-                self.hand_down = True
+                if take_action:
+                    self.hand_down = True
                 if DEBUG:
                     print('Ready to HIT')
         # now give impulse
@@ -221,12 +227,14 @@ class FetchPushSlippery(gym.Env):
     def compute_reward(self, *args, **kwargs):
         return self.fetch_env.compute_reward(*args, **kwargs)
 
-    def controller_action(self, obs:Dict, DEBUG:bool=False):
+    def controller_action(self, obs:Dict, take_action:bool=True, DEBUG:bool=False):
         """
             Given an observation return actions according
             to an imperfect controller
             [grip_pos, object_pos, object_rel_pos, gripper_state, object_rot,
                      object_velp, object_velr, grip_velp, gripper_vel]
+            take_action: bool
+                Whether use this to take action in environment or just use for subtracting from rand actions
         """
         grip_pos = obs['observation'][:3]
         object_pos = obs['observation'][3:6]
@@ -236,7 +244,8 @@ class FetchPushSlippery(gym.Env):
         if not self.hand_higher:
             action = [0,0,1,0]
             if grip_pos[2]-object_pos[2] > 0.05:
-                self.hand_higher = True
+                if take_action:
+                    self.hand_higher = True
                 if DEBUG:
                     print('Hand lifted from the table')
         # once above, move it behind
@@ -245,21 +254,24 @@ class FetchPushSlippery(gym.Env):
             action_pos = list(self.kp * (goal_grip_pos - grip_pos))
             action = action_pos[:2] + [0,0]
             if np.linalg.norm(grip_pos[:2]-goal_grip_pos[:2]) < 0.0005:
-                self.hand_behind = True
+                if take_action:
+                    self.hand_behind = True
                 if DEBUG:
                     print('Hand has moved behind')
         # now move the hand down
         if self.hand_behind and not self.hand_down:
             action = [0,0,-1,0]
             if grip_pos[2]-object_pos[2] < 0.005:
-                self.hand_down = True
+                if take_action:
+                    self.hand_down = True
                 if DEBUG:
                     print('Ready to HIT')
         # now move the hand down
         if self.hand_behind and not self.hand_down:
             action = [0,0,-1,0]
             if grip_pos[2]-object_pos[2]<0.01:
-                self.hand_down = True
+                if take_action:
+                    self.hand_down = True
                 if DEBUG:
                     print('Ready to HIT')
         # now give impulse
@@ -274,20 +286,20 @@ if __name__ == "__main__":
     # env_name = 'FetchPushImperfect'
     env_name = 'FetchPushSlippery'
     env = globals()[env_name]() # this will initialise the class as per the string env_nameå
-    env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True) # save video
+    # env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True) # save video
     successes = []
     # set the seeds
     env.seed(1)
     env.action_space.seed(1)
     env.observation_space.seed(1)
     failed_eps = []
-    for ep in range(100):
+    for ep in range(10):
         success = np.zeros(env.max_episode_steps)
         # print('_'*50)
         obs = env.reset()
         action = [0,0,0,0]  # give zero action at first time step
         for i in (range(env.max_episode_steps)):
-            # env.render(mode='human')
+            env.render(mode='human')
             obs, rew, done, info = env.step(action)
             success[i] = info['is_success']
         ep_success = info['is_success']

@@ -182,12 +182,14 @@ class FetchPickAndPlaceSticky(gym.Env):
     def compute_reward(self, *args, **kwargs):
         return self.fetch_env.compute_reward(*args, **kwargs)
 
-    def controller_action(self, obs:Dict, DEBUG:bool=False):
+    def controller_action(self, obs:Dict, take_action:bool=True, DEBUG:bool=False):
         """
             Given an observation return actions according
             to an imperfect controller
             [grip_pos, object_pos, object_rel_pos, gripper_state, object_rot,
                      object_velp, object_velr, grip_velp, gripper_vel]
+            take_action: bool
+                Whether use this to take action in environment or just use for subtracting from rand actions
         """
         grip_pos = obs['observation'][:3]
         object_pos = obs['observation'][3:6]
@@ -203,7 +205,8 @@ class FetchPickAndPlaceSticky(gym.Env):
                 # if we are close to the object close the gripper
                 if np.linalg.norm(action_pos) < self.height_threshold:
                     action = action_pos[:3] + [-1]  # close the gripper
-                    self.object_in_hand = True
+                    if take_action:
+                        self.object_in_hand = True
         # once object is in hand, move towards goal
         else:
             p_rel = obs['desired_goal'] - obs['achieved_goal']
@@ -274,12 +277,14 @@ class FetchPickAndPlaceNoisy(gym.Env):
     def compute_reward(self, *args, **kwargs):
         return self.fetch_env.compute_reward(*args, **kwargs)
 
-    def controller_action(self, obs:Dict, DEBUG:bool=False):
+    def controller_action(self, obs:Dict, take_action:bool=True, DEBUG:bool=False):
         """
             Given an observation return actions according
             to an imperfect controller
             [grip_pos, object_pos, object_rel_pos, gripper_state, object_rot,
                      object_velp, object_velr, grip_velp, gripper_vel]
+            take_action: bool
+                Whether use this to take action in environment or just use for subtracting from rand actions
         """
         grip_pos = obs['observation'][:3]
         object_pos = obs['observation'][3:6]
@@ -303,7 +308,8 @@ class FetchPickAndPlaceNoisy(gym.Env):
                 # if we are close to the object close the gripper
                 if np.linalg.norm(action_pos) < self.height_threshold:
                     action = action_pos[:3] + [-1]  # close the gripper
-                    self.object_in_hand = True
+                    if take_action:
+                        self.object_in_hand = True
         # once object is in hand, move towards goal
         else:
             p_rel = obs['desired_goal'] - obs['achieved_goal']
@@ -314,9 +320,9 @@ class FetchPickAndPlaceNoisy(gym.Env):
         return np.clip(action,-1,1)
 
 if __name__ == "__main__":
-    env_name = 'FetchPickAndPlacePerfect'
+    # env_name = 'FetchPickAndPlacePerfect'
     # env_name = 'FetchPickAndPlaceSticky'
-    # env_name = 'FetchPickAndPlaceNoisy'
+    env_name = 'FetchPickAndPlaceNoisy'
     env = globals()[env_name]() # this will initialise the class as per the string env_name
     # env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True)
     successes = []
