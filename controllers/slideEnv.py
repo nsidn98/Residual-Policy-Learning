@@ -361,23 +361,23 @@ class FetchSlideFrictionControl(gym.Env):
                 if take_action:
                     self.hand_down = True
 
-                # Debugging stuff
-                print('d2 = ' + str(self.d2))
-                print('mu = ' + str(self.mu))
                 v1 = np.sqrt(2*self.d2*self.mu*self.g)
-                print('v1 = ' +str(v1))
-                print('d1 = ' + str(self.d1))
                 a = v1**2/(2*self.d1)
-                print('a = '+str(a))
 
                 if DEBUG:
+                    print('d2 = ' + str(self.d2))
+                    print('mu = ' + str(self.mu))
+                    print('v1 = ' +str(v1))
+                    print('d1 = ' + str(self.d1))
+                    print('a = '+str(a))
                     print('Ready to HIT')
         # slide the puck
         if self.hand_down:
             v1 = np.sqrt(2*self.d2*self.mu*self.g)
             a = v1**2/(2*self.d1)
             if np.linalg.norm(goal_pos[:-1] - grip_pos[:-1]) > self.d2:
-                print('this is the distance ' + str(np.linalg.norm(goal_pos[:-1] - grip_pos[:-1])))
+                if DEBUG:
+                    print('this is the distance ' + str(np.linalg.norm(goal_pos[:-1] - grip_pos[:-1])))
                 cur_time = self.fetch_env.env.sim.data.time
                 # delta s = sdot * dt, where sdot = f*t and s is measured along direction from puck to goal
                 action_pos = list((goal_pos - grip_pos)/np.linalg.norm(goal_pos - grip_pos) * self.f * (cur_time - self.start_time)*(cur_time - self.prev_time))
@@ -387,7 +387,8 @@ class FetchSlideFrictionControl(gym.Env):
                 #print('no push')
                 action_pos = [0,0]
             action = action_pos[:2] + [0,0]
-            print('commanded action = ' + str(np.linalg.norm(action[0:2])))
+            if DEBUG:
+                print('commanded action = ' + str(np.linalg.norm(action[0:2])))
         # added clipping here
         #return action
         return np.clip(action, -1, 1)
@@ -531,12 +532,12 @@ class FetchSlideSlapControl(gym.Env):
         # set the goal speed
         if self.hand_down and not self.set_goal_speed:
             self.dist_to_goal = np.linalg.norm(object_pos[:-1]-goal_pos[:-1])
+            self.goal_speed = np.sqrt(2*self.mu*self.g*self.dist_to_goal)
+            self.a = (self.goal_speed**2)/(2*disp)
             #print('this is dist to goal ' +str(self.dist_to_goal))
             #print('this is mu ' +str(self.mu))
-            self.goal_speed = np.sqrt(2*self.mu*self.g*self.dist_to_goal)
             #print('this is the goal speed ' + str(self.goal_speed))
             #print('this is the timestep ' + str(self.dt))
-            self.a = (self.goal_speed**2)/(2*disp)
             #print('this is a ' + str(self.a))
             #print('this is 0.025+self.r ' +str(0.025+self.r))
             #print('this is the distance between gripper pos and object pos ' +str(np.linalg.norm(object_pos-grip_pos)))
@@ -549,24 +550,26 @@ class FetchSlideSlapControl(gym.Env):
             time = self.fetch_env.env.sim.data.time
             dtime = time - self.prev_time
             if np.linalg.norm(goal_pos[:-1] - grip_pos[:-1]) > self.dist_to_goal:
-                print('this is the distance ' + str(np.linalg.norm(goal_pos[:-1] - grip_pos[:-1])))
+                if DEBUG:
+                    print('this is the distance ' + str(np.linalg.norm(goal_pos[:-1] - grip_pos[:-1])))
                 #print(self.prev_speed)
-                next_speed = self.prev_speed + (self.a * dtime)
                 #print(next_speed)
+                next_speed = self.prev_speed + (self.a * dtime)
                 action_pos = list((dtime*(next_speed+self.prev_speed)/2)*calc_direction(object_pos,goal_pos))
                 self.prev_speed = next_speed
                 self.prev_time = time
             else:
                 action_pos = [0,0]
             action = action_pos[:2] + [0,0]
-            print('commanded action = ' + str(np.linalg.norm(action[0:2])))
+            if DEBUG:
+                print('commanded action = ' + str(np.linalg.norm(action[0:2])))
 
         # added clipping here
         return np.clip(action, -1, 1)
 
 if __name__ == "__main__":
     env_name = 'FetchSlideSlapControl'
-    env_name = 'FetchSlideFrictionControl'
+    # env_name = 'FetchSlideFrictionControl'
     # env_name = 'FetchSlideImperfectControl'
     env = globals()[env_name]() # this will initialise the class as per the string env_name
     #env = gym.wrappers.Monitor(env, 'video/' + env_name, force=True)
@@ -576,7 +579,6 @@ if __name__ == "__main__":
     env.action_space.seed(1)
     env.observation_space.seed(1)
     for ep in range(10):
-        print('new episode')
         success = np.zeros(env.max_episode_steps)
         obs = env.reset()
         action = [0,0,0,0]  # give zero action at first time step
