@@ -2,7 +2,7 @@ import argparse
 from distutils.util import strtobool
 
 parser = argparse.ArgumentParser(description='DDPG agent')
-parser.add_argument('--exp_name', type=str, default='rl', choices=['res', 'rl'],
+parser.add_argument('--exp_name', type=str, default='rl', choices=['res', 'rl', 'baseline'],
                     help='Type of experiment: either learn with rl from scratch or learn residues')
 parser.add_argument('--env_name', type=str, default="FetchReach-v1",
                     help='the id of the gym environment')
