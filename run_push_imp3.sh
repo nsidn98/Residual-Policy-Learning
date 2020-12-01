@@ -24,5 +24,5 @@ mkdir $env_names
 # mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs --seed=0 200 2>&1 | tee $env_names/out_critic_0
 # mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs --seed=1 200 2>&1 | tee $env_names/out_critic_1
 # mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs --seed=2 200 2>&1 | tee $env_names/out_critic_2
-mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs --seed=3 200 2>&1 | tee $env_names/out_critic_3
+mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs 200 --seed=3 2>&1 | tee $env_names/out_critic_3
 # mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs --seed=4 200 2>&1 | tee $env_names/out_critic_4

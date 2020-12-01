@@ -21,8 +21,8 @@ mkdir $env_names
 
 # Run the script   
 # this one is to check if residual learning happens by monitoring critic loss for burn-in
-mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs --seed=0 500 2>&1 | tee $env_names/out_critic_0
-# mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs --seed=1 500 2>&1 | tee $env_names/out_critic_1
-# mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs --seed=2 500 2>&1 | tee $env_names/out_critic_2
-# mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs --seed=3 500 2>&1 | tee $env_names/out_critic_3
-# mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs --seed=4 500 2>&1 | tee $env_names/out_critic_4
+mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs 500 --seed=0 2>&1 | tee $env_names/out_critic_0
+# mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs 500 --seed=1 2>&1 | tee $env_names/out_critic_1
+# mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs 500 --seed=2 2>&1 | tee $env_names/out_critic_2
+# mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs 500 --seed=3 2>&1 | tee $env_names/out_critic_3
+# mpirun python -m RL.ddpg_mpi --env_name=$env_names --exp_name='res' --beta=0.005 --beta_monitor='critic' --n_epochs 500 --seed=4 2>&1 | tee $env_names/out_critic_4
