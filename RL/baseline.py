@@ -120,13 +120,18 @@ if __name__ == "__main__":
             os.environ["WANDB_API_KEY"] = my_wandb_api_key # my Wandb api key
             os.environ["WANDB_MODE"] = "dryrun"
 
-        experiment_name = f"{args.exp_name}_{args.env_name}"
+        experiment_name = f"{args.exp_name}_{args.env_name}_{args.seed}"
             
         print('_'*50)
         print('Creating wandboard...')
         print('_'*50)
-        wandb.init(project='Residual Policy Learning', entity='6-881_project', sync_tensorboard=True, config=vars(args), name=experiment_name, save_code=True)
-        writer = SummaryWriter(f"/tmp/{experiment_name}")
+        wandb_save_dir = os.path.join(os.path.abspath(os.getcwd()),f"wandb_{args.env_name}")
+        if not os.path.exists(wandb_save_dir):
+            os.makedirs(wandb_save_dir)
+        wandb.init(project='Residual Policy Learning', entity='6-881_project',\
+                   sync_tensorboard=True, config=vars(args), name=experiment_name,\
+                   save_code=True, dir=wandb_save_dir, group=f"{args.env_name}")
+        writer = SummaryWriter(f"{wandb.run.dir}/{experiment_name}")
     # initialise the agent
     trainer = Agent(args, env, writer=writer)
     trainer.evaluate_controller()

@@ -356,11 +356,6 @@ class DDPG_Agent:
         actor_loss = -self.critic_network(states, actions_pred).mean()
         actor_loss = actor_loss + self.args.action_l2 * (actions_pred / self.env_params['action_max']).pow(2).mean()
 
-        # # log the losses
-        # if self.writer:
-        #     writer.add_scalar('Losses/Actor Loss', actor_loss.item(), step)
-        #     writer.add_scalar('Losses/Critic Loss', critic_loss.item(), step)
-
         # backpropagate
         self.actor_optim.zero_grad()    # zero the gradients
         actor_loss.backward()           # backward prop
@@ -434,7 +429,7 @@ if __name__ == "__main__":
     from torch.utils.tensorboard import SummaryWriter
 
     from config import args
-    from utils import connected_to_internet, make_env
+    from utils import connected_to_internet, make_env, get_pretty_env_name
 
     # check whether GPU is available or not
     use_cuda = torch.cuda.is_available()
@@ -477,15 +472,19 @@ if __name__ == "__main__":
             os.environ["WANDB_MODE"] = "dryrun"
 
         start_time = time.strftime("%H_%M_%S-%d_%m_%Y", time.localtime())
-        experiment_name = f"{args.exp_name}_{start_time}"
-        if args.exp_name == 'res':
-            experiment_name = f"{args.exp_name}_{args.beta_monitor}_{start_time}"
+        pretty_env_name = get_pretty_env_name(args.env_name)
+        experiment_name = f"{args.exp_name}_{pretty_env_name}_{args.seed}_{start_time}"
             
         print('_'*50)
         print('Creating wandboard...')
         print('_'*50)
-        wandb.init(project='Residual Policy Learning', entity='6-881_project', sync_tensorboard=True, config=vars(args), name=experiment_name, save_code=True)
-        writer = SummaryWriter(f"/tmp/{experiment_name}")
+        wandb_save_dir = os.path.join(os.path.abspath(os.getcwd()),f"wandb_{pretty_env_name}")
+        if not os.path.exists(wandb_save_dir):
+            os.makedirs(wandb_save_dir)
+        wandb.init(project='Residual Policy Learning', entity='6-881_project',\
+                   sync_tensorboard=True, config=vars(args), name=experiment_name,\
+                   save_code=True, dir=wandb_save_dir, group=f"{pretty_env_name}")
+        writer = SummaryWriter(f"{wandb.run.dir}/{experiment_name}")
         weight_save_path = os.path.join(wandb.run.dir, "model.ckpt")
     ##########################################################################
     print('_'*50)
@@ -495,9 +494,6 @@ if __name__ == "__main__":
     print('_'*50)
     # initialise the agent
     trainer = DDPG_Agent(args, env, save_dir=weight_save_path, device=device, writer=writer)
-    # uncomment below 2 lines to monitor networks parameters
-    # wandb.watch(trainer.actor_network, 'parameters')
-    # wandb.watch(trainer.critic_network, 'parameters')
     # train the agent
     trainer.train()
 

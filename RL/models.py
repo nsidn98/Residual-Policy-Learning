@@ -9,6 +9,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from mpi4py import MPI
+
 ACTS = {
     'relu': F.relu,
     'sigmoid':torch.sigmoid,
@@ -54,9 +56,10 @@ class actor(nn.Module):
         self.action_out = nn.Linear(hidden_dims[-1], env_params['action'])
         # if learning residues, then make weights of last layer equal to zero
         if args.exp_name == 'res':
-            print('_'*50)
-            print('Initialising actor final layer with zeros')
-            print('_'*50)
+            if MPI.COMM_WORLD.Get_rank() == 0:
+                print('_'*50)
+                print('Initialising actor final layer with zeros')
+                print('_'*50)
             self.action_out.weight.data.fill_(0)
             self.action_out.bias.data.fill_(0)
 
