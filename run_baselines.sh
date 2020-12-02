@@ -13,8 +13,8 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/gridsan/sidnayak/.mujoco/mujoco200
 # script to iterate through different envs
 # Get the baselines for just pure control
 seeds=(0 1 2 3 4)
-envs=("FetchSlideFrictionControl" "FetchSlideSlapControl" "FetchPickAndPlacePerfect" "FetchPickAndPlaceSticky" "FetchPushImperfect" "FetchPushSlippery")
-epochs=(500 500 500 500 200 200)
+envs=("FetchPushImperfect" "FetchPushSlippery" "FetchSlideFrictionControl" "FetchSlideSlapControl" "FetchPickAndPlacePerfect" "FetchPickAndPlaceSticky")
+epochs=(200 200 500 500 500 500)
 mkdir baseline_outputs
 # Run the script
 for i in ${!seeds[@]}; do
