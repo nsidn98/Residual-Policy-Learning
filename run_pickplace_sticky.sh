@@ -9,7 +9,7 @@
 source /etc/profile
 module load anaconda/2020a 
 module load mpi/openmpi-4.0
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/gridsan/bronars/.mujoco/mujoco200/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/gridsan/sidnayak/.mujoco/mujoco200/bin
 
 # change environment name here
 env_names="FetchPickAndPlaceSticky"
