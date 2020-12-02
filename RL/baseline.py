@@ -121,6 +121,7 @@ if __name__ == "__main__":
             os.environ["WANDB_MODE"] = "dryrun"
 
         experiment_name = f"{args.exp_name}_{args.env_name}_{args.seed}"
+        args.env_name = f"{args.exp_name}_{args.env_name}"  # changing baselines so that grouping becomes easier
             
         print('_'*50)
         print('Creating wandboard...')
