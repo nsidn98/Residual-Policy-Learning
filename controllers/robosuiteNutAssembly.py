@@ -19,6 +19,7 @@ from math import *
 
 """
 TO DOS:
+1. Figure out whats going wrong with the z pose
 
 """
 options = {}
@@ -45,35 +46,27 @@ def controller(obs:dict, nut_p, object_below_hand:bool=False, gripper_reoriented
     object_pos  = obs['RoundNut0_pos']
     object_quat = obs['RoundNut0_quat']
     z_table = 0.8610982
-    #print('new action')
-    #print(obs.keys())
+
     object_axang = T.quat2axisangle(object_quat)
     gripper_axang = T.quat2axisangle(gripper_quat)
-    # print('object ' + str(object_axang))
-    # print('gripper ' + str(gripper_axang))
-    if not object_below_hand:
-        action = 10 * (object_pos[:2] - gripper_pos[:2])
-        action = np.hstack((action, [0,0,0,0,-1]))
+
+    if not object_below_hand or gripper_reoriented < 5:
+        if not object_below_hand:
+            action = 20 * (object_pos[:2] - gripper_pos[:2])
+        else:
+            action = [0,0]
+        frac = -0.2
+        ang_goal = frac*nut_p
+        if gripper_reoriented < 5:
+            action_angle= [0,0,ang_goal]
+            gripper_reoriented+=1
+        else:
+            action_angle=[0,0,0]
+        action = np.hstack((action, [0], action_angle, [-1]))
         if np.linalg.norm((object_pos[:2] - gripper_pos[:2])) < 0.01:
-            print('object below hand, time to reorient')
             object_below_hand = True
 
-    elif object_below_hand and not gripper_reoriented==20:
-        # delta_q = T.quat_slerp(gripper_quat,object_quat,0.05)
-        # action_angle = T.quat2axisangle(delta_q)
-        frac = 0.05
-        ang_goal = frac*nut_p
-        action_angle= [0,0,ang_goal]
-        action = np.hstack(([0,0,0], action_angle, [-1]))
-        gripper_reoriented += 1
-        print(nut_p)
-        print(gripper_axang)
-
-    # else:
-    #     print('debugging')
-    #     action = [0,0,0,0,0,0,-1]
-
-    elif gripper_reoriented and not object_in_hand:
+    elif not object_in_hand:
         action = [0,0,-1,0,0,0,-1]
         if np.linalg.norm((object_pos[2] - gripper_pos[2])) < 0.01:
             action = [0,0,0,0,0,0,1]
@@ -82,9 +75,9 @@ def controller(obs:dict, nut_p, object_below_hand:bool=False, gripper_reoriented
     else:
         action = [0,0,1,0,0,0,1]
         if object_pos[2] - z_table > 0.1:
-            action = 10 * (goal_pos[:2] - gripper_pos[:2])
+            action = 20 * (goal_pos[:2] - object_pos[:2])
             action = np.hstack((action,[0,0,0,0,1]))
-            if np.linalg.norm((goal_pos[:2] - gripper_pos[:2])) < 0.025:
+            if np.linalg.norm((goal_pos[:2] - object_pos[:2])) < 0.025:
                 action = [0,0,0,0,0,0,-1]
 
     return action, object_below_hand, gripper_reoriented, object_in_hand
@@ -97,7 +90,7 @@ for i_episode in range(20):
     peg2_pos = np.array(env.sim.data.body_xpos[env.peg2_body_id])
     goal_pos = peg2_pos
     #print(goal_pos)
-    for t in range(500):
+    for t in range(100):
         env.render()
         if t == 0: # Record some initial info about the scene
             initial_obs = env.env._get_observation()
