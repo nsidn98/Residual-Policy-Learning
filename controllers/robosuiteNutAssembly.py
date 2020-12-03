@@ -55,30 +55,30 @@ def controller(obs:dict, nut_p, object_below_hand:bool=False, gripper_reoriented
             action = 20 * (object_pos[:2] - gripper_pos[:2])
         else:
             action = [0,0]
-        frac = -0.2
-        ang_goal = frac*nut_p
-        if gripper_reoriented < 5:
+        frac = -0.2 # Rate @ which to rotate gripper about z. Negative because z axes of object and gripper are antiparallel
+        ang_goal = frac*nut_p # Nut p is the nut's random intial pertubation about z.
+        if gripper_reoriented < 5: # Gripper should be aligned with nut after 5 action steps
             action_angle= [0,0,ang_goal]
             gripper_reoriented+=1
-        else:
+        else: # After 5 action steps, don't rotate gripper any more
             action_angle=[0,0,0]
         action = np.hstack((action, [0], action_angle, [-1]))
         if np.linalg.norm((object_pos[:2] - gripper_pos[:2])) < 0.01:
             object_below_hand = True
 
-    elif not object_in_hand:
+    elif not object_in_hand: # Close gripper
         action = [0,0,-1,0,0,0,-1]
         if np.linalg.norm((object_pos[2] - gripper_pos[2])) < 0.01:
             action = [0,0,0,0,0,0,1]
             object_in_hand = True
     
-    else:
+    else: # Move gripper up and toward goal position
         action = [0,0,1,0,0,0,1]
         if object_pos[2] - z_table > 0.1:
             action = 20 * (goal_pos[:2] - object_pos[:2])
             action = np.hstack((action,[0,0,0,0,1]))
             if np.linalg.norm((goal_pos[:2] - object_pos[:2])) < 0.025:
-                action = [0,0,0,0,0,0,-1]
+                action = [0,0,0,0,0,0,-1] # Drop nut once it's close enough to the peg
 
     return action, object_below_hand, gripper_reoriented, object_in_hand
 
