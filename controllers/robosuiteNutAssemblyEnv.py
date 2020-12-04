@@ -10,6 +10,12 @@ from robosuite.controllers import load_controller_config
 
 import robosuite.utils.transform_utils as T
 
+import platform
+# for OpenMP error on MacOS with dylib files
+# check https://stackoverflow.com/questions/53014306/error-15-initializing-libiomp5-dylib-but-found-libiomp5-dylib-already-initial
+if 'Darwin' in platform.platform():
+    os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
 class NutAssembly(gym.Env):
     """
         NutAssembly:
@@ -27,7 +33,7 @@ class NutAssembly(gym.Env):
                 use_object_obs = True,
                 use_camera_obs=False,           # do not use pixel observations
                 has_offscreen_renderer=False,   # not needed since not using pixel obs
-                has_renderer=True,              # make sure we can render to the screen
+                has_renderer=False,              # make sure we can render to the screen
                 reward_shaping=False,            # use dense rewards
                 control_freq=20,                # control should happen fast enough so that simulation looks smooth
             )
@@ -66,12 +72,12 @@ class NutAssembly(gym.Env):
     def close(self):
         return self.env.close()
 
-    def goal_distance(achieved_goal,desired_goal):
+    def goal_distance(self, achieved_goal,desired_goal):
         return np.linalg.norm(achieved_goal-desired_goal, axis = 1)
 
     def compute_reward(self, achieved_goal, goal, info):
         # Compute distance between goal and the achieved goal.
-        d = goal_distance(achieved_goal, goal)
+        d = self.goal_distance(achieved_goal, goal)
         if self.reward_type == 'sparse':
             return -(d > self.distance_threshold).astype(np.float32)
         else:
@@ -107,7 +113,7 @@ class NutAssemblyHand(gym.Env):
                 use_object_obs = True,
                 use_camera_obs=False,           # do not use pixel observations
                 has_offscreen_renderer=False,   # not needed since not using pixel obs
-                has_renderer=True,              # make sure we can render to the screen
+                has_renderer=False,              # make sure we can render to the screen
                 reward_shaping=False,            # use dense rewards
                 control_freq=20,                # control should happen fast enough so that simulation looks smooth
             )
@@ -157,7 +163,7 @@ class NutAssemblyHand(gym.Env):
     def close(self):
         return self.env.close()
 
-    def goal_distance(achieved_goal,desired_goal):
+    def goal_distance(self, achieved_goal, desired_goal):
         return np.linalg.norm(achieved_goal-desired_goal, axis = 1)
 
     def compute_reward(self, achieved_goal, goal, info):
