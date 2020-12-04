@@ -49,7 +49,10 @@ def make_env(env_name:str):
     try: 
         return getattr(robosuiteNutAssemblyEnv, env_name)()
     except:
-        pass
+        # only add except in the last try
+        print('_'*150)
+        print(f'No Environment with the name {env_name} found. Please check the name of the environment or mujoco installation')
+        print('_'*150)
 
 def get_pretty_env_name(env_name:str):
     if 'FetchPickAndPlace' in env_name:
