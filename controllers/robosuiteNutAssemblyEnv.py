@@ -9,7 +9,6 @@ from robosuite.wrappers import GymWrapper
 from robosuite.controllers import load_controller_config
 
 import robosuite.utils.transform_utils as T
-from math import *
 
 class NutAssembly(gym.Env):
     """
@@ -36,17 +35,25 @@ class NutAssembly(gym.Env):
         self.max_episode_steps = 100 #self.fetch_env._max_episode_steps
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
+        self.reward_type = 'sparse'
+        self.distance_threshold = 0.065
 
     def step(self, action):
-        observation, reward, done, info = self.env.step(action)
-        observation = observation = env.env._get_observation()
-        observation['goal'] = np.array(self.env.sim.data.body_xpos[self.env.peg2_body_id])
+        ob, reward, done, info = self.env.step(action)
+        ob = self.env.env._get_observation()
+        observation = {}
+        observation['observation'] = np.hstack((ob['robot0_eef_pos'], ob['robot0_eef_quat'], ob['RoundNut0_pos'], ob['RoundNut0_quat']))
+        observation['desired_goal'] = np.array(self.env.sim.data.body_xpos[self.env.peg2_body_id])
+        observation['achieved_goal'] = ob['RoundNut0_pos']
         return observation, reward, done, info
 
     def reset(self):
-        observation = self.env.reset()
-        observation = env.env._get_observation()
-        observation['goal'] = np.array(self.env.sim.data.body_xpos[self.env.peg2_body_id])
+        ob = self.env.reset()
+        ob = self.env.env._get_observation()
+        observation = {}
+        observation['observation'] = np.hstack((ob['robot0_eef_pos'], ob['robot0_eef_quat'], ob['RoundNut0_pos'], ob['RoundNut0_quat']))
+        observation['desired_goal'] = np.array(self.env.sim.data.body_xpos[self.env.peg2_body_id])
+        observation['achieved_goal'] = ob['RoundNut0_pos']
         return observation
 
     def seed(self, seed=0):
@@ -57,10 +64,21 @@ class NutAssembly(gym.Env):
         return self.env.render()
 
     def close(self):
-        return self.=env.close()
+        return self.env.close()
 
-    def compute_reward(self, *args, **kwargs):
-        return self.env.reward(*args, **kwargs)
+    def goal_distance(achieved_goal,desired_goal):
+        return np.linalg.norm(achieved_goal-desired_goal, axis = 1)
+
+    def compute_reward(self, achieved_goal, goal, info):
+        # Compute distance between goal and the achieved goal.
+        d = goal_distance(achieved_goal, goal)
+        if self.reward_type == 'sparse':
+            return -(d > self.distance_threshold).astype(np.float32)
+        else:
+            return -d
+
+    # def compute_reward(self, *args, **kwargs):
+    #     return self.env.reward(*args, **kwargs)
 
 class NutAssemblyHand(gym.Env):
     """
@@ -98,6 +116,8 @@ class NutAssemblyHand(gym.Env):
         self.max_episode_steps = 100 #self.fetch_env._max_episode_steps
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
+        self.reward_type = 'sparse'
+        self.distance_threshold = 0.065
 
     def step(self, residual_action:np.ndarray):
         controller_action = np.array(self.controller_action(self.last_observation))
@@ -105,16 +125,22 @@ class NutAssemblyHand(gym.Env):
             print(controller_action)
         action = np.add(controller_action, residual_action)
         action = np.clip(action, -1, 1)
-        observation, reward, done, info = self.env.step(action)
-        observation = env.env._get_observation()
-        observation['goal'] = np.array(self.env.sim.data.body_xpos[self.env.peg2_body_id])
+        ob, reward, done, info = self.env.step(action)
+        ob = self.env.env._get_observation()
+        observation = {}
+        observation['observation'] = np.hstack((ob['robot0_eef_pos'], ob['robot0_eef_quat'], ob['RoundNut0_pos'], ob['RoundNut0_quat']))
+        observation['desired_goal'] = np.array(self.env.sim.data.body_xpos[self.env.peg2_body_id])
+        observation['achieved_goal'] = ob['RoundNut0_pos']
         self.last_observation = observation.copy()
         return observation, reward, done, info
 
     def reset(self):
         self.env.reset() # reset according to task defaults
-        observation = env.env._get_observation()
-        observation['goal'] = np.array(self.env.sim.data.body_xpos[self.env.peg2_body_id])
+        ob = self.env.env._get_observation()
+        observation = {}
+        observation['observation'] = np.hstack((ob['robot0_eef_pos'], ob['robot0_eef_quat'], ob['RoundNut0_pos'], ob['RoundNut0_quat']))
+        observation['desired_goal'] = np.array(self.env.sim.data.body_xpos[self.env.peg2_body_id])
+        observation['achieved_goal'] = ob['RoundNut0_pos']
         self.last_observation = observation.copy()
         self.object_in_hand = False
         self.object_below_hand = False
@@ -131,15 +157,30 @@ class NutAssemblyHand(gym.Env):
     def close(self):
         return self.env.close()
 
-    def compute_reward(self, *args, **kwargs):
-        return self.env.reward(*args, **kwargs)
+    def goal_distance(achieved_goal,desired_goal):
+        return np.linalg.norm(achieved_goal-desired_goal, axis = 1)
+
+    def compute_reward(self, achieved_goal, goal, info):
+        # Compute distance between goal and the achieved goal.
+        d = self.goal_distance(achieved_goal, goal)
+        if self.reward_type == 'sparse':
+            return -(d > self.distance_threshold).astype(np.float32)
+        else:
+            return -d
+
+    # def compute_reward(self, *args, **kwargs):
+    #     return self.env.reward(*args, **kwargs)
 
     def controller_action(self, obs:dict, take_action:bool=True, DEBUG:bool=False):
-        gripper_pos = obs['robot0_eef_pos']
-        gripper_quat = obs['robot0_eef_quat']
-        object_pos  = obs['RoundNut0_pos']
-        object_quat = obs['RoundNut0_quat']
-        goal_pos = obs['goal']
+        observation = obs['observation']
+        goal_pos = obs['desired_goal']
+        achieved_goal = obs['achieved_goal']
+
+        gripper_pos = observation[:3] # TO DO: CHANGE THESE
+        gripper_quat = observation[3:7]
+        object_pos  = observation[7:10]
+        object_quat = observation[10:]
+
         z_table = 0.8610982
 
         object_axang = T.quat2axisangle(object_quat)
@@ -165,7 +206,6 @@ class NutAssemblyHand(gym.Env):
         elif not self.object_in_hand: # Close gripper
             action = [0,0,-1,0,0,0,-1]
             if np.linalg.norm((object_pos[2] - gripper_pos[2])) < 0.01:
-                print('in here too')
                 action = [0,0,0,0,0,0,1]
                 self.object_in_hand = True
         
@@ -194,6 +234,7 @@ if __name__ == "__main__":
         success = np.zeros(env.max_episode_steps)
         # print('_'*50)
         obs = env.reset()
+        print(obs.keys())
         action = [0,0,0,0,0,0,0]  # give zero action at first time step
         for i in (range(env.max_episode_steps)):
             env.render()
