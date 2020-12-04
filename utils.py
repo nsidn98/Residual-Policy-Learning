@@ -5,6 +5,7 @@ import gym
 import controllers.slideEnv as slideEnv
 import controllers.pushEnv as pushEnv
 import controllers.pickAndPlaceEnv as pickPlaceEnv
+import controllers.robosuiteNutAssemblyEnv as robosuiteNutAssemblyEnv
 import requests
 from mpi4py import MPI
 
@@ -44,7 +45,11 @@ def make_env(env_name:str):
     try:
        return getattr(pickPlaceEnv, env_name)()
     except:
-        pass 
+        pass
+    try: 
+        return getattr(robosuiteNutAssemblyEnv, env_name)()
+    except:
+        pass
 
 def get_pretty_env_name(env_name:str):
     if 'FetchPickAndPlace' in env_name:
