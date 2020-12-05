@@ -2,11 +2,37 @@ import torch
 import gym
 import numpy as np
 
-from RL.models import actor
+# from RL.models import actor
 from config import args
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+"""
+the input x in both networks should be [o, g], where o is the observation and g is the goal.
+"""
+
+# define the actor network
+class actor(nn.Module):
+    def __init__(self, args, env_params):
+        super(actor, self).__init__()
+        self.max_action = env_params['action_max']
+        self.fc1 = nn.Linear(env_params['obs'] + env_params['goal'], 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 256)
+        self.action_out = nn.Linear(256, env_params['action'])
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        actions = self.max_action * torch.tanh(self.action_out(x))
+
+        return actions
+
 # process the inputs
-def process_inputs_mpi(o, g, o_mean, o_std, g_mean, g_std, args):
+def process_inputs_mpi(o, g, args):
     o_clip = np.clip(o, -args.clip_obs, args.clip_obs)
     g_clip = np.clip(g, -args.clip_obs, args.clip_obs)
     o_norm = np.clip((o_clip - o_mean) / (o_std), -args.clip_range, args.clip_range)
@@ -25,15 +51,21 @@ def process_inputs(o, g, args):
 if __name__ == '__main__':
     import os
     # load weights
-    weight_path = 'wandb/run-20201108_210931-3jb4qca6/files/model.ckpt'
+    # weight_path = 'wandb/run-20201108_210931-3jb4qca6/files/model.ckpt'
+    weight_path = 'wandb/offline-run-20201115_145020-27v13tns/files/model.ckpt'
     if os.path.exists(weight_path):
         # load the model checkpoints
         ckpt = torch.load(weight_path)
     else:
         print('Path to weights does not exist. Download it from wandb')
+    args_model = ckpt['args']   # load the arguments used to train that particular model
+    args.mpi = args_model['mpi']
+    args.env_name = args_model['env_name']
+    args.clip_range = args_model['clip_range']
+    args.clip_obs = args_model['clip_obs']
     #################################################################
     # check if MPI was used or not and accordingly set preprocess() method
-    mpi_mode = False    # whether MPI was used to train the agent
+    mpi_mode = args.mpi    # whether MPI was used to train the agent
     if mpi_mode:
         preprocess = process_inputs_mpi
         o_mean, o_std, g_mean, g_std = ckpt['normalizer_feats']
