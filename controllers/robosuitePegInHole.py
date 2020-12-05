@@ -49,9 +49,11 @@ class keypointOptPegInHole(gym.Env):
         peg_pos0 = observation["hole_pos"] - observation["peg_to_hole"]
         self.peg_pos0 = peg_pos0
         self.hole_pos0 = observation["hole_pos"]
-        pPegRelRob0 = (peg_pos0) - observation["robot0_eef_pos"]
+        # position of peg rel rob0, in peg frame, should be constant forever
+        pPegRelRob0 = np.matmul(T.quat2mat(observation["peg_quat"]) ,  (peg_pos0) - observation["robot0_eef_pos"])
         qPegRelRob0 = T.quat_multiply(T.quat_conjugate(observation["robot0_eef_quat"]),observation["peg_quat"])
-        pHoleRelRob1 = observation["hole_pos"] - observation["robot1_eef_pos"]
+        # position of hole rel rob1, in hole frame, should be constant forever
+        pHoleRelRob1 = np.matmul(T.quat2mat(observation["hole_quat"]) , observation["hole_pos"] - observation["robot1_eef_pos"])
         qHoleRelRob1 = T.quat_multiply(T.quat_conjugate(observation["robot1_eef_quat"]),observation["hole_quat"])
 
         pRob0RelPeg = observation["robot0_eef_pos"] - peg_pos0
@@ -80,8 +82,9 @@ class keypointOptPegInHole(gym.Env):
         print("x")
         print(x)
         # extract optimization results
-        ind_offset_1 = 13
-        ind_offset_2 = 26
+        # x = [p_peg_1, p_hole_1, q_peg_1, q_hole_1, p_peg_2, ... q_peg_3, q_hole_3]
+        ind_offset_1 = 14
+        ind_offset_2 = 28
 
         p_peg_1 = x[0:3]
         p_hole_1 = x[3:6]
@@ -97,12 +100,7 @@ class keypointOptPegInHole(gym.Env):
         q_peg_3 = x[ind_offset_2 + 6:ind_offset_2 + 10]
         q_hole_3 = x[ind_offset_2 + 10:ind_offset_2 + 14]
 
-        self.p_rob0_1 = p_peg_1 + pRob0RelPeg
-        self.p_rob1_1 = p_hole_1 + pRob1RelHole
-        self.p_rob0_2 = p_peg_2 + pRob0RelPeg
-        self.p_rob1_2 = p_hole_2 + pRob1RelHole
-        self.p_rob0_3 = p_peg_3 + pRob0RelPeg
-        self.p_rob1_3 = p_hole_3 + pRob1RelHole
+
 
         q_rob0_1 = T.quat_multiply(q_peg_1,qRob0RelPeg)
         q_rob1_1 = T.quat_multiply(q_hole_1,qRob1RelHole)
@@ -110,6 +108,13 @@ class keypointOptPegInHole(gym.Env):
         q_rob1_2 = T.quat_multiply(q_hole_2,qRob1RelHole)
         q_rob0_3 = T.quat_multiply(q_peg_3,qRob0RelPeg)
         q_rob1_3 = T.quat_multiply(q_hole_3,qRob1RelHole)
+
+        self.p_rob0_1 = p_peg_1 + np.matmul(T.quat2mat(T.quat_conjugate(q_peg_1)),pRob0RelPeg)
+        self.p_rob1_1 = p_hole_1 + np.matmul(T.quat2mat(T.quat_conjugate(q_hole_1)),pRob1RelHole)
+        self.p_rob0_2 = p_peg_2 + np.matmul(T.quat2mat(T.quat_conjugate(q_peg_2)),pRob0RelPeg)
+        self.p_rob1_2 = p_hole_2 + np.matmul(T.quat2mat(T.quat_conjugate(q_hole_2)),pRob1RelHole)
+        self.p_rob0_3 = p_peg_3 + np.matmul(T.quat2mat(T.quat_conjugate(q_peg_3)),pRob0RelPeg)
+        self.p_rob1_3 = p_hole_3 + np.matmul(T.quat2mat(T.quat_conjugate(q_hole_3)),pRob1RelHole)
 
         self.axang_rob0_1 = T.quat2axisangle(q_rob0_1)
         self.axang_rob1_1 = T.quat2axisangle(q_rob1_1)
