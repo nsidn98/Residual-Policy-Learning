@@ -30,6 +30,8 @@ share/python-wheels/
 *.egg
 MANIFEST
 *.ckpt
+run_scripts_final/
+RL/test.py
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
