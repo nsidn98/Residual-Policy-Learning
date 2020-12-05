@@ -2,6 +2,7 @@ import gym
 from gym.utils import seeding
 import numpy as np
 from typing import Dict
+import os
 
 # Additional libraries needed for robosuite
 import robosuite as suite
@@ -51,6 +52,7 @@ class NutAssembly(gym.Env):
         observation['observation'] = np.hstack((ob['robot0_eef_pos'], ob['robot0_eef_quat'], ob['RoundNut0_pos'], ob['RoundNut0_quat']))
         observation['desired_goal'] = np.array(self.env.sim.data.body_xpos[self.env.peg2_body_id])
         observation['achieved_goal'] = ob['RoundNut0_pos']
+        info['is_success'] = reward
         return observation, reward, done, info
 
     def reset(self):
@@ -138,6 +140,7 @@ class NutAssemblyHand(gym.Env):
         observation['desired_goal'] = np.array(self.env.sim.data.body_xpos[self.env.peg2_body_id])
         observation['achieved_goal'] = ob['RoundNut0_pos']
         self.last_observation = observation.copy()
+        info['is_success'] = reward
         return observation, reward, done, info
 
     def reset(self):
@@ -202,18 +205,21 @@ class NutAssemblyHand(gym.Env):
             ang_goal = frac*self.nut_p # Nut p is the nut's random intial pertubation about z.
             if self.gripper_reoriented < 5: # Gripper should be aligned with nut after 5 action steps
                 action_angle= [0,0,ang_goal]
-                self.gripper_reoriented+=1
+                if self.take_action:
+                    self.gripper_reoriented+=1
             else: # After 5 action steps, don't rotate gripper any more
                 action_angle=[0,0,0]
             action = np.hstack((action, [0], action_angle, [-1]))
             if np.linalg.norm((object_pos[:2] - gripper_pos[:2])) < 0.01:
-                self.object_below_hand = True
+                if self.take_action:
+                    self.object_below_hand = True
 
         elif not self.object_in_hand: # Close gripper
             action = [0,0,-1,0,0,0,-1]
             if np.linalg.norm((object_pos[2] - gripper_pos[2])) < 0.01:
                 action = [0,0,0,0,0,0,1]
-                self.object_in_hand = True
+                if self.take_action:
+                    self.object_in_hand = True
         
         else: # Move gripper up and toward goal position
             action = [0,0,1,0,0,0,1]
@@ -246,8 +252,8 @@ if __name__ == "__main__":
             env.render()
             obs, rew, done, info = env.step(action)
             print(rew)
-            success[i] = rew#info['is_success']
-        ep_success = rew#info['is_success']
+            success[i] = info['is_success']
+        ep_success = info['is_success']
         if not ep_success:
             failed_eps.append(ep)
         successes.append(ep_success)
