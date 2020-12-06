@@ -26,14 +26,15 @@ class NutAssembly(gym.Env):
         NutAssembly task from robosuite with no controller. Can be used for learning from scratch.
     """
     def __init__(self, *args, **kwargs):
-        # self.fetch_env = gym.make('FetchPickAndPlace-v1')
-        # self.metadata = self.fetch_env.metadata
-
+        options = {}
+        controller_name = 'OSC_POSE'
+        options["controller_configs"] = suite.load_controller_config(default_controller=controller_name)
+        
         self.env = GymWrapper(
             suite.make(
                 "NutAssemblyRound",             # Nut Assembly task with the round peg
                 robots="IIWA",                  # use IIWA robot
-                #**options,                      # controller options
+                **options,                      # controller options
                 use_object_obs = True,
                 use_camera_obs=False,           # do not use pixel observations
                 has_offscreen_renderer=False,   # not needed since not using pixel obs
@@ -42,7 +43,7 @@ class NutAssembly(gym.Env):
                 control_freq=20,                # control should happen fast enough so that simulation looks smooth
             )
         )
-        self.max_episode_steps = 500 #self.fetch_env._max_episode_steps
+        self.max_episode_steps = 500
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
         self.reward_type = 'sparse'
@@ -88,9 +89,6 @@ class NutAssembly(gym.Env):
         else:
             return -d
 
-    # def compute_reward(self, *args, **kwargs):
-    #     return self.env.reward(*args, **kwargs)
-
 class NutAssemblyHand(gym.Env):
     """
         NutAssemblyHand:
@@ -103,13 +101,9 @@ class NutAssemblyHand(gym.Env):
             Scaling factor for position control
     """
     def __init__(self, kp:float=20, *args, **kwargs):
-        #self.fetch_env = gym.make('FetchPickAndPlace-v1')
-        #self.metadata = self.fetch_env.metadata
-
         options = {}
         controller_name = 'OSC_POSE'
         options["controller_configs"] = suite.load_controller_config(default_controller=controller_name)
-        #options["controller_configs"]["kp"] = 150
 
         self.env = GymWrapper(
             suite.make(
@@ -119,13 +113,13 @@ class NutAssemblyHand(gym.Env):
                 use_object_obs = True,
                 use_camera_obs=False,           # do not use pixel observations
                 has_offscreen_renderer=False,   # not needed since not using pixel obs
-                has_renderer=True,              # make sure we can render to the screen
+                has_renderer=False,              # make sure we can render to the screen
                 reward_shaping=False,            # use dense rewards
                 control_freq=20,                # control should happen fast enough so that simulation looks smooth
             )
         )
 
-        self.max_episode_steps = 500 #self.fetch_env._max_episode_steps
+        self.max_episode_steps = 500
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
         self.reward_type = 'sparse'
@@ -181,9 +175,6 @@ class NutAssemblyHand(gym.Env):
         else:
             return -d
 
-    # def compute_reward(self, *args, **kwargs):
-    #     return self.env.reward(*args, **kwargs)
-
     def controller_action(self, obs:dict, take_action:bool=True, DEBUG:bool=False):
         observation = obs['observation']
         goal_pos = obs['desired_goal']
@@ -202,7 +193,7 @@ class NutAssemblyHand(gym.Env):
         else:
             object_axang_touse = [0,0,object_axang[-1]%(2*pi/8)]
         gripper_axang = T.quat2axisangle(gripper_quat)
-        print('object axang to use ' + str(object_axang_touse))
+        # print('object axang to use ' + str(object_axang_touse))
 
         if self.gripper_reoriented ==0:
             self.gripper_init_quat = gripper_quat
@@ -216,11 +207,11 @@ class NutAssemblyHand(gym.Env):
         # changing_wf = T.quat_multiply(gripper_quat_inv,self.gripper_init_quat)
         # changing_wf_axang = T.quat2axisangle(changing_wf)
 
-        print('changing wf axis ' +str(changing_wf_axang))
+        # print('changing wf axis ' +str(changing_wf_axang))
 
         if not self.object_below_hand or self.gripper_reoriented < 5:
             self.nut_p = T.quat2axisangle(object_quat)[-1]
-            print(self.nut_p)
+            # print(self.nut_p)
             if not self.object_below_hand:
                 action = 20 * (object_pos[:2] - gripper_pos[:2])
             else:
@@ -302,10 +293,10 @@ if __name__ == "__main__":
         success = np.zeros(env.max_episode_steps)
         # print('_'*50)
         obs = env.reset()
-        print(obs.keys())
+        # print(obs.keys())
         action = [0,0,0,0,0,0,0]  # give zero action at first time step
         for i in (range(env.max_episode_steps)):
-            env.render()
+            # env.render()
             obs, rew, done, info = env.step(action)
             success[i] = info['is_success']
         ep_success = info['is_success']
