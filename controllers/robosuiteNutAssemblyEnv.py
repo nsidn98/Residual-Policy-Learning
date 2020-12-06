@@ -12,6 +12,9 @@ from robosuite.controllers import load_controller_config
 import robosuite.utils.transform_utils as T
 
 import platform
+
+from math import pi
+
 # for OpenMP error on MacOS with dylib files
 # check https://stackoverflow.com/questions/53014306/error-15-initializing-libiomp5-dylib-but-found-libiomp5-dylib-already-initial
 if 'Darwin' in platform.platform():
@@ -39,7 +42,7 @@ class NutAssembly(gym.Env):
                 control_freq=20,                # control should happen fast enough so that simulation looks smooth
             )
         )
-        self.max_episode_steps = 100 #self.fetch_env._max_episode_steps
+        self.max_episode_steps = 500 #self.fetch_env._max_episode_steps
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
         self.reward_type = 'sparse'
@@ -106,6 +109,7 @@ class NutAssemblyHand(gym.Env):
         options = {}
         controller_name = 'OSC_POSE'
         options["controller_configs"] = suite.load_controller_config(default_controller=controller_name)
+        #options["controller_configs"]["kp"] = 150
 
         self.env = GymWrapper(
             suite.make(
@@ -115,13 +119,13 @@ class NutAssemblyHand(gym.Env):
                 use_object_obs = True,
                 use_camera_obs=False,           # do not use pixel observations
                 has_offscreen_renderer=False,   # not needed since not using pixel obs
-                has_renderer=False,              # make sure we can render to the screen
+                has_renderer=True,              # make sure we can render to the screen
                 reward_shaping=False,            # use dense rewards
                 control_freq=20,                # control should happen fast enough so that simulation looks smooth
             )
         )
 
-        self.max_episode_steps = 100 #self.fetch_env._max_episode_steps
+        self.max_episode_steps = 500 #self.fetch_env._max_episode_steps
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
         self.reward_type = 'sparse'
@@ -185,7 +189,7 @@ class NutAssemblyHand(gym.Env):
         goal_pos = obs['desired_goal']
         achieved_goal = obs['achieved_goal']
 
-        gripper_pos = observation[:3] # TO DO: CHANGE THESE
+        gripper_pos = observation[:3]
         gripper_quat = observation[3:7]
         object_pos  = observation[7:10]
         object_quat = observation[10:]
@@ -193,32 +197,84 @@ class NutAssemblyHand(gym.Env):
         z_table = 0.8610982
 
         object_axang = T.quat2axisangle(object_quat)
+        if abs(object_axang[-1] - 1.24) < 0.2:
+            object_axang_touse = [0,0,object_axang[-1]%(2*pi/8) + (2*pi/8)]
+        else:
+            object_axang_touse = [0,0,object_axang[-1]%(2*pi/8)]
         gripper_axang = T.quat2axisangle(gripper_quat)
+        print('object axang to use ' + str(object_axang_touse))
+
+        if self.gripper_reoriented ==0:
+            self.gripper_init_quat = gripper_quat
+            self.gripper_reoriented = 1
+
+        init_inv = T.quat_inverse(self.gripper_init_quat)
+        changing_wf = T.quat_multiply(init_inv,gripper_quat)
+        changing_wf_axang = T.quat2axisangle(changing_wf)
+
+        # gripper_quat_inv = T.quat_inverse(gripper_quat)
+        # changing_wf = T.quat_multiply(gripper_quat_inv,self.gripper_init_quat)
+        # changing_wf_axang = T.quat2axisangle(changing_wf)
+
+        print('changing wf axis ' +str(changing_wf_axang))
 
         if not self.object_below_hand or self.gripper_reoriented < 5:
             self.nut_p = T.quat2axisangle(object_quat)[-1]
+            print(self.nut_p)
             if not self.object_below_hand:
                 action = 20 * (object_pos[:2] - gripper_pos[:2])
             else:
                 action = [0,0]
-            frac = 0.2 # Rate @ which to rotate gripper about z. Negative because z axes of object and gripper are antiparallel
-            ang_goal = frac*self.nut_p # Nut p is the nut's random intial pertubation about z.
-            if self.gripper_reoriented < 5: # Gripper should be aligned with nut after 5 action steps
-                action_angle= [0,0,ang_goal]
-                if self.take_action:
-                    self.gripper_reoriented+=1
-            else: # After 5 action steps, don't rotate gripper any more
-                action_angle=[0,0,0]
+
+            action = 20 * (object_pos[:2] - gripper_pos[:2])
+
+            # frac = 0.2 # Rate @ which to rotate gripper about z.
+            # ang_goal = frac*self.nut_p # Nut p is the nut's random intial pertubation about z.
+            
+            # if self.gripper_reoriented == 0:
+            #     self.gripper_init_quat = gripper_quat
+            # if self.gripper_reoriented < 5: # Gripper should be aligned with nut after 5 action steps
+            #     action_angle= [0,0,ang_goal]
+
+            #     #print('object ' + str(object_axang))
+            #     #print('gripper ' + str(gripper_axang))
+
+            #     init_inv = T.quat_inverse(self.gripper_init_quat)
+            #     init_inv_mat = T.quat2mat(init_inv)
+
+            #     rel = T.quat_multiply(gripper_quat,init_inv)
+            #     rel_axang = T.quat2axisangle(rel)
+            #     #print('rel_axang ' +str(rel_axang))
+
+            #     rel_axang_WF = np.matmul(init_inv_mat,rel_axang)
+
+            #     #print('rel_axang_WF ' +str(rel_axang_WF))
+
+            #     if take_action:
+            #         self.gripper_reoriented+=1
+            # else: # After 5 action steps, don't rotate gripper any more
+            #     action_angle=[0,0,0]
+
+            action_angle = 0.2*(object_axang_touse - changing_wf_axang)
+            action_angle = [0,0,action_angle[-1]]
+            #action_angle = [0,0,0]
+            #print('action angle ' +str(action_angle))
+
+            if np.linalg.norm(object_axang_touse - changing_wf_axang) <0.1:
+                if take_action:
+                    self.gripper_reoriented = 5
+
             action = np.hstack((action, [0], action_angle, [-1]))
             if np.linalg.norm((object_pos[:2] - gripper_pos[:2])) < 0.01:
-                if self.take_action:
+                if take_action:
                     self.object_below_hand = True
+                    #self.gripper_reoriented = 5
 
         elif not self.object_in_hand: # Close gripper
             action = [0,0,-1,0,0,0,-1]
             if np.linalg.norm((object_pos[2] - gripper_pos[2])) < 0.01:
                 action = [0,0,0,0,0,0,1]
-                if self.take_action:
+                if take_action:
                     self.object_in_hand = True
         
         else: # Move gripper up and toward goal position
@@ -226,7 +282,7 @@ class NutAssemblyHand(gym.Env):
             if object_pos[2] - z_table > 0.1:
                 action = 20 * (goal_pos[:2] - object_pos[:2])
                 action = np.hstack((action,[0,0,0,0,1]))
-                if np.linalg.norm((goal_pos[:2] - object_pos[:2])) < 0.025:
+                if np.linalg.norm((goal_pos[:2] - object_pos[:2])) < 0.0225:
                     action = [0,0,0,0,0,0,-1] # Drop nut once it's close enough to the peg
 
         action = np.clip(action, -1, 1)
@@ -251,7 +307,6 @@ if __name__ == "__main__":
         for i in (range(env.max_episode_steps)):
             env.render()
             obs, rew, done, info = env.step(action)
-            print(rew)
             success[i] = info['is_success']
         ep_success = info['is_success']
         if not ep_success:
