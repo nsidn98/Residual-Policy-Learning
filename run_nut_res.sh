@@ -13,7 +13,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/gridsan/sidnayak/.mujoco/mujoco200
 
 # Run the script        
 # script to iterate through different hyperparameters
-envs="NutAssembly"
+envs="NutAssemblyHand"
 seeds=0
 exp_names="res"
 # Run the script
