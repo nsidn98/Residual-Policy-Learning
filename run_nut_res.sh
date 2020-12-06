@@ -17,6 +17,6 @@ envs="NutAssembly"
 seeds=0
 exp_names="res"
 # Run the script
-mkdir "${exp_names}_${envs}_${seed}"
+mkdir ${exp_names}_${envs}
 # echo "${exp_names}_${envs}_${seeds}"
 mpirun python -m RL.ddpg_mpi --env_name ${envs} --seed ${seeds} --n_epochs 2000  --exp_name ${exp_names} --actor_lr=0.0001 2>&1 | tee ${exp_names}_${envs}/out_${envs}_${seeds}
