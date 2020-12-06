@@ -22,6 +22,12 @@ def connected_to_internet(url:str='http://www.google.com/', timeout:int=5):
             print("No internet connection available.")
     return False
 
+def print_dash(num_dash:int=50):
+    """
+        Print dash
+    """
+    print('_'*num_dash)
+
 def make_env(env_name:str):
     """
         Make an environment and return
@@ -30,24 +36,42 @@ def make_env(env_name:str):
     """
     try:
         # check if environment exists in gym
-        return gym.make(env_name)
+        env = gym.make(env_name)
+        print(f'Making Environment: {env_name}')
+        return env
     except:
         pass
     try:
         # else import from custom slide environment file
-       return getattr(slideEnv, env_name)()
+        env = getattr(slideEnv, env_name)()
+        print_dash()
+        print(f'Making Environment: {env_name}')
+        print_dash()
+        return env
     except:
         pass
     try:
-       return getattr(pushEnv, env_name)()
+        env = getattr(pushEnv, env_name)()
+        print_dash()
+        print(f'Making Environment: {env_name}')
+        print_dash()
+        return env 
     except:
         pass
     try:
-       return getattr(pickPlaceEnv, env_name)()
+        env = getattr(pickPlaceEnv, env_name)()
+        print_dash()
+        print(f'Making Environment: {env_name}')
+        print_dash()
+        return env
     except:
         pass
-    try: 
-        return getattr(robosuiteNutAssemblyEnv, env_name)()
+    try:
+        env = getattr(robosuiteNutAssemblyEnv, env_name)()
+        print_dash()
+        print(f'Making Environment: {env_name}')
+        print_dash()
+        return env
     except:
         # only add except in the last try
         print('_'*150)
@@ -71,9 +95,11 @@ def get_pretty_env_name(env_name:str):
         exp_name = env_name
         exp_name = exp_name.replace('FetchPush','')
         return f"{new_env_name}{exp_name}"
+    if 'Nut' in env_name:
+        return "NutAssembly"
 
 if __name__ == "__main__":
-    env_names = ['FetchSlide-v1','FetchSlide','FetchSlideImperfectControl']
+    env_names = ['FetchSlide-v1','FetchSlide','FetchPickAndPlacePerfect', 'FetchPushImperfect', 'NutAssembly']
     for name in env_names:
         env = make_env(name)
-        print(f"{name}: {env.reset()}")
+        # print(f"{name}: {env.reset()}")
