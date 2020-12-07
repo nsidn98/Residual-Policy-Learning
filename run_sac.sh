@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Slurm sbatch options
-# #SBATCH -o run.sh.log-%j
-# #SBATCH --gres=gpu:volta:1
+#SBATCH -o run.sh.log-%j
+#SBATCH --gres=gpu:volta:1
 
 # # Loading the required module
-# source /etc/profile
-# module load anaconda/2020a 
-# module load mpi/openmpi-4.0
-# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/gridsan/sidnayak/.mujoco/mujoco200/bin
+source /etc/profile
+module load anaconda/2020a 
+module load mpi/openmpi-4.0
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/gridsan/sidnayak/.mujoco/mujoco200/bin
 
 # Run the script        
 # script to iterate through different hyperparameters
