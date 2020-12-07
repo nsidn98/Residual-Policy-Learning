@@ -6,6 +6,7 @@ import controllers.slideEnv as slideEnv
 import controllers.pushEnv as pushEnv
 import controllers.pickAndPlaceEnv as pickPlaceEnv
 import controllers.robosuiteNutAssemblyEnv as robosuiteNutAssemblyEnv
+import controllers.nutAssemblyDenseEnv as nutAssemblyDenseEnv
 import requests
 from mpi4py import MPI
 
@@ -73,6 +74,14 @@ def make_env(env_name:str):
         print_dash()
         return env
     except:
+        pass
+    try:
+        env = getattr(nutAssemblyDenseEnv, env_name)()
+        print_dash()
+        print(f'Making Environment: {env_name}')
+        print_dash()
+        return env 
+    except:
         # only add except in the last try
         print('_'*150)
         print(f'No Environment with the name {env_name} found. Please check the name of the environment or mujoco installation')
@@ -95,8 +104,11 @@ def get_pretty_env_name(env_name:str):
         exp_name = env_name
         exp_name = exp_name.replace('FetchPush','')
         return f"{new_env_name}{exp_name}"
-    if 'Nut' in env_name:
+    if 'Nut' in env_name and 'Dense' not in env_name:
         return "NutAssembly"
+    if 'Nut' in env_name and 'Dense' in env_name:
+        return "NutAssemblyDense"
+    
 
 if __name__ == "__main__":
     env_names = ['FetchSlide-v1','FetchSlide','FetchPickAndPlacePerfect', 'FetchPushImperfect', 'NutAssembly']
