@@ -2,6 +2,16 @@
 
 6.881 Robotic Manipulation Course Project, MIT Fall 2020 - Implementation of Residual Policy Learning
 
+## Results:
+### Push Task
+![Push](https://raw.githubusercontent.com/nsidn98/Residual-Policy-Learning/main/results/Push%20Final.png)
+
+### Pick And Place Task
+![PickPlace](https://raw.githubusercontent.com/nsidn98/Residual-Policy-Learning/main/results/Pick%20and%20Place%20Final.png)
+
+### Slide Task
+![Slide](https://raw.githubusercontent.com/nsidn98/Residual-Policy-Learning/main/results/Slide%20Final.png)
+
 ## Usage:
 
 ### First install the requirements using:
