@@ -1,3 +1,7 @@
+"""
+    Networks for SAC
+    TODO:@nsidn98 add modular version of networks like the ones in ddpg/models.py
+"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

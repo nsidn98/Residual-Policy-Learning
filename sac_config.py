@@ -1,7 +1,10 @@
+"""
+    Config for all experiments related to SAC (dense reward settings)
+"""
 import argparse
 from distutils.util import strtobool
 
-parser = argparse.ArgumentParser(description='Soft Actor-Critic Args')
+parser = argparse.ArgumentParser(description='SAC Agent')
 parser.add_argument('--env_name', default="HalfCheetah-v2",
                     help='Mujoco Gym environment')
 parser.add_argument('--exp_name', type=str, default='rl', choices=['res', 'rl', 'baseline'],

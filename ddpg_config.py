@@ -1,3 +1,6 @@
+"""
+    Config for all experiments related to DDPG+HER (sparse reward settings)
+"""
 import argparse
 from distutils.util import strtobool
 

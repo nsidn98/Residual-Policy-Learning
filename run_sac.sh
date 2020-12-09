@@ -18,4 +18,4 @@ exp_names="rl"
 # Run the script
 mkdir ${exp_names}_${envs}
 # echo "${exp_names}_${envs}_${seeds}"
-python -m RL.sac --env_name ${envs} --seed ${seeds} --exp_name ${exp_names} 2>&1 | tee ${exp_names}_${envs}/out_${envs}_${seeds}
+python -m RL.sac.sac --env_name ${envs} --seed ${seeds} --exp_name ${exp_names} 2>&1 | tee ${exp_names}_${envs}/out_${envs}_${seeds}

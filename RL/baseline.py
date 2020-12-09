@@ -1,5 +1,7 @@
 """
     To evaluate the success rate with just the controller for baselines
+    Tested only for fetchEnvs
+    TODO: @nsidn98 add robosuite compatibility
 """
 import copy
 import gym
@@ -92,7 +94,7 @@ if __name__ == "__main__":
     import wandb
     from torch.utils.tensorboard import SummaryWriter
 
-    from config import args
+    from ddpg_config import args
     from utils import connected_to_internet, make_env
 
     env = make_env(args.env_name)   # initialise the environment

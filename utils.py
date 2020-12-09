@@ -2,11 +2,11 @@
     Utility functions
 """
 import gym
-import controllers.slideEnv as slideEnv
-import controllers.pushEnv as pushEnv
-import controllers.pickAndPlaceEnv as pickPlaceEnv
-import controllers.robosuiteNutAssemblyEnv as robosuiteNutAssemblyEnv
-import controllers.nutAssemblyDenseEnv as nutAssemblyDenseEnv
+import controllers.fetchEnvs.slideEnv as slideEnv
+import controllers.fetchEnvs.pushEnv as pushEnv
+import controllers.fetchEnvs.pickAndPlaceEnv as pickPlaceEnv
+import controllers.robosuite.robosuiteNutAssemblyEnv as robosuiteNutAssemblyEnv
+import controllers.robosuite.nutAssemblyDenseEnv as nutAssemblyDenseEnv
 import requests
 from mpi4py import MPI
 

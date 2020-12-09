@@ -1,3 +1,6 @@
+"""
+    The main file to run Soft Actor Critic 
+"""
 import os
 import math
 import numpy as np
@@ -9,8 +12,8 @@ import torch.nn.functional as F
 from torch.optim import Adam
 
 from sac_config import args
-from RL.sac_replay_buffer import replay_buffer
-from RL.sac_models import GaussianActor, DeterministicActor, Critic
+from RL.sac.replay_buffer import replay_buffer
+from RL.sac.models import GaussianActor, DeterministicActor, Critic
 
 
 class SAC_Agent:
