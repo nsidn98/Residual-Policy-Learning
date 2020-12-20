@@ -1,3 +1,7 @@
+"""
+    Robosuite environment for the Door opening task with a controller
+    NOTE: This is under construction
+"""
 import gym
 import numpy as np
 import robosuite as suite

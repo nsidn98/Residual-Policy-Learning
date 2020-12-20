@@ -1,3 +1,27 @@
+"""
+    Collection of variations in the slide environment
+    Contains the following:
+    FetchPickAndPlace:
+        The vanilla 'FetchPickAndPlace-v1' without any controller
+        Can be used for learning with RL from scratch
+        Action taken as:
+            Pi_theta(s) = f(s)
+    FetchPickAndPlacePerfect:
+        'FetchPickAndPlace-v1' with a perfect controller
+        The controller is a proportional controller.
+        Action taken as:
+            Pi_theta(s) = f(s) + pi_theta(s)
+    FetchPickAndPlaceSticky:
+        'FetchPickAndPlace-v1' with the same perfect controller as FetchPickAndPlacePerfect
+        but the action taken is the same as the previous step with a probability of 0.5
+        Action taken as:
+            Pi_theta(s) = f(s) + pi_theta(s)
+    FetchPickAndPlaceNoisy:
+        'FetchPickAndPlace-v1' with the same perfect controller as FetchPickAndPlacePerfect
+        but the action taken has some added random noise
+        Action taken as:
+            Pi_theta(s) = f(s) + pi_theta(s)
+"""
 import gym
 from gym.utils import seeding
 import numpy as np

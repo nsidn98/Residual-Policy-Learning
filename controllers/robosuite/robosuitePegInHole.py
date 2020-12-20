@@ -1,3 +1,8 @@
+"""
+    Robosuite environment for the peg in hole task
+    NOTE: Under contruction
+    TODO: add documentation
+"""
 import gym
 import numpy as np
 import robosuite as suite
@@ -189,7 +194,6 @@ class keypointOptPegInHole(gym.Env):
                 print("here")
                 self.poseNum = 1
 
-
         # elif self.poseNum == 1:
         #     skdj
         # elif self.poseNum == 2:
@@ -200,8 +204,6 @@ class keypointOptPegInHole(gym.Env):
         # return (np.hstack((posActionRob0,axangActionRob0)).tolist(),np.hstack((posActionRob1,axangActionRob1)).tolist())
         return np.hstack((posActionRob0,axangActionRob0,posActionRob1,axangActionRob1)).tolist()
         # return np.hstack((posActionRob0,axangActionRob0,np.array([0,0,0,0,np.pi,0]))).tolist()
-        # return np.hstack((np.array([0,0,0,0,np.pi,0]),np.array([0,0,0,0,np.pi,0]))).tolist()
-        # return np.hstack()
 
     def cons_1(self,x):
         # first pose: constrain peg further than lPeg in z direction relative to hole

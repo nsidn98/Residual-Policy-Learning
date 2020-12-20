@@ -1,3 +1,7 @@
+"""
+    Robosuite environment for the nut assembly task with a controller
+    This is the same as robosuiteNutAssembly but with a dense reward structure
+"""
 import gym
 from gym.utils import seeding
 import numpy as np

@@ -1,3 +1,7 @@
+"""
+    Robosuite environment for the nut assembly task with a controller
+    Refer the report for more details on the controller
+"""
 import gym
 from gym.utils import seeding
 import numpy as np
@@ -22,7 +26,7 @@ if 'Darwin' in platform.platform():
 
 class NutAssembly(gym.Env):
     """
-        NutAssembly:
+        NutAssembly: with no controller
         NutAssembly task from robosuite with no controller. Can be used for learning from scratch.
     """
     def __init__(self, *args, **kwargs):
@@ -92,9 +96,10 @@ class NutAssembly(gym.Env):
 class NutAssemblyHand(gym.Env):
     """
         NutAssemblyHand:
-            'FetchPickAndPlace-v1' with a perfect controller
+            'NutAssemblyHand' with an imperfect controller
+            Pose control for controller mode in robosuite
             Action taken as:
-                pi_theta(s) = pi(s) + f_theta(s)
+                Pi_theta(s) = pi_theta(s) + f(s)
         Parameters:
         -----------
         kp: float
@@ -185,7 +190,7 @@ class NutAssemblyHand(gym.Env):
         object_pos  = observation[7:10]
         object_quat = observation[10:]
 
-        z_table = 0.8610982
+        z_table = 0.8610982     # the z-coordinate of the table surface
 
         object_axang = T.quat2axisangle(object_quat)
         if abs(object_axang[-1] - 1.24) < 0.2:
@@ -193,9 +198,8 @@ class NutAssemblyHand(gym.Env):
         else:
             object_axang_touse = [0,0,object_axang[-1]%(2*pi/8)]
         gripper_axang = T.quat2axisangle(gripper_quat)
-        # print('object axang to use ' + str(object_axang_touse))
 
-        if self.gripper_reoriented ==0:
+        if self.gripper_reoriented == 0:
             self.gripper_init_quat = gripper_quat
             self.gripper_reoriented = 1
 
@@ -203,15 +207,9 @@ class NutAssemblyHand(gym.Env):
         changing_wf = T.quat_multiply(init_inv,gripper_quat)
         changing_wf_axang = T.quat2axisangle(changing_wf)
 
-        # gripper_quat_inv = T.quat_inverse(gripper_quat)
-        # changing_wf = T.quat_multiply(gripper_quat_inv,self.gripper_init_quat)
-        # changing_wf_axang = T.quat2axisangle(changing_wf)
-
-        # print('changing wf axis ' +str(changing_wf_axang))
-
+        # reorient the gripper to match the nut faces and move above the nut
         if not self.object_below_hand or self.gripper_reoriented < 5:
             self.nut_p = T.quat2axisangle(object_quat)[-1]
-            # print(self.nut_p)
             if not self.object_below_hand:
                 action = 20 * (object_pos[:2] - gripper_pos[:2])
             else:
@@ -219,37 +217,8 @@ class NutAssemblyHand(gym.Env):
 
             action = 20 * (object_pos[:2] - gripper_pos[:2])
 
-            # frac = 0.2 # Rate @ which to rotate gripper about z.
-            # ang_goal = frac*self.nut_p # Nut p is the nut's random intial pertubation about z.
-            
-            # if self.gripper_reoriented == 0:
-            #     self.gripper_init_quat = gripper_quat
-            # if self.gripper_reoriented < 5: # Gripper should be aligned with nut after 5 action steps
-            #     action_angle= [0,0,ang_goal]
-
-            #     #print('object ' + str(object_axang))
-            #     #print('gripper ' + str(gripper_axang))
-
-            #     init_inv = T.quat_inverse(self.gripper_init_quat)
-            #     init_inv_mat = T.quat2mat(init_inv)
-
-            #     rel = T.quat_multiply(gripper_quat,init_inv)
-            #     rel_axang = T.quat2axisangle(rel)
-            #     #print('rel_axang ' +str(rel_axang))
-
-            #     rel_axang_WF = np.matmul(init_inv_mat,rel_axang)
-
-            #     #print('rel_axang_WF ' +str(rel_axang_WF))
-
-            #     if take_action:
-            #         self.gripper_reoriented+=1
-            # else: # After 5 action steps, don't rotate gripper any more
-            #     action_angle=[0,0,0]
-
             action_angle = 0.2*(object_axang_touse - changing_wf_axang)
             action_angle = [0,0,action_angle[-1]]
-            #action_angle = [0,0,0]
-            #print('action angle ' +str(action_angle))
 
             if np.linalg.norm(object_axang_touse - changing_wf_axang) <0.1:
                 if take_action:
@@ -259,8 +228,7 @@ class NutAssemblyHand(gym.Env):
             if np.linalg.norm((object_pos[:2] - gripper_pos[:2])) < 0.01:
                 if take_action:
                     self.object_below_hand = True
-                    #self.gripper_reoriented = 5
-
+        # close the gripper and pick the nut
         elif not self.object_in_hand: # Close gripper
             action = [0,0,-1,0,0,0,-1]
             if np.linalg.norm((object_pos[2] - gripper_pos[2])) < 0.01:

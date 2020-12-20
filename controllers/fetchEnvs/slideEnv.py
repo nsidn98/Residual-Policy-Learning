@@ -5,19 +5,19 @@
         The vanilla 'FetchSlide-v1' without any controller
         Can be used for learning with RL from scratch
         Action taken as:
-            pi_theta(s) = f_theta(s)
+            Pi_theta(s) = f(s)
     FetchSlideImperfectControl:
         'FetchSlide-v1' with an imperfect controller
         This controller can at least slide the puck but not perfectly
         As in does push it in some direction
         Action taken as:
-            pi_theta(s) = pi(s) + f_theta(s)
+            Pi_theta(s) = f(s) + pi_theta(s)
     FetchSlideFrictionControl:
         'FetchSlide-v1' with a fairly good controller
         This controller cannot slide the puck perfectly to the goal
         As in can push in the direction of the goal
         Action taken as:
-            pi_theta(s) = pi(s) + f_theta(s)
+            Pi_theta(s) = f(s) + pi_theta(s)
 """
 import gym
 from gym.utils import seeding

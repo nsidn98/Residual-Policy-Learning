@@ -1,3 +1,8 @@
+"""
+    Robosuite environment for the pick and place task
+    Has a position based controller
+    NOTE: Does not have a gym type wrapper
+"""
 import gym
 import numpy as np
 import robosuite as suite

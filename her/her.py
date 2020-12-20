@@ -1,3 +1,6 @@
+"""
+    Sampler for HER
+"""
 import numpy as np
 from typing import Dict
 

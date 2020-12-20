@@ -1,3 +1,22 @@
+"""
+    Collection of variations in the slide environment
+    Contains the following:
+    FetchPush:
+        The vanilla 'FetchSlide-v1' without any controller
+        Can be used for learning with RL from scratch
+        Action taken as:
+            Pi_theta(s) = f(s)
+    FetchPushImperfect:
+        'FetchPush-v1' with an imperfect controller
+        This controller can at least push the puck but not perfectly
+        Action taken as:
+            Pi_theta(s) = f(s) + pi_theta(s)
+    FetchPushSlippery:
+        'FetchPush-v1' with the same imperfect controller as FetchPushImperfect
+        The friction coefficient between puck and table is changed from 1.0 to 0.1
+        Action taken as:
+            Pi_theta(s) = f(s) + pi_theta(s)
+"""
 import gym
 from gym.utils import seeding
 import numpy as np

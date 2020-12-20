@@ -1,3 +1,6 @@
+"""
+    Example of setting goals at custom locations for Slide environment
+"""
 import gym
 import numpy as np
 import time
