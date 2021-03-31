@@ -9,7 +9,7 @@ __pycache__/
 # Distribution / packaging
 .DS_Store
 wandb/
-mujoco-py/
+# mujoco-py/
 .Python
 build/
 develop-eggs/
@@ -30,7 +30,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 *.ckpt
-run_scripts_final/
+# run_scripts_final/
 RL/test.py
 
 # PyInstaller
